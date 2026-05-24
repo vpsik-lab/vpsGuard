@@ -1,0 +1,60 @@
+log_dir: /var/log/vps-guard
+cache_dir: /var/cache/vps-guard
+mode: agent
+agent_mode: hybrid
+
+bootstrap:
+  enabled: true
+  ssh_port: 22
+  allow_root: false
+
+monitor:
+  journal: true
+  log_paths:
+    - /var/log/auth.log
+    - /var/log/syslog
+  interval_seconds: 5
+
+threat:
+  abuseipdb_key: ""
+  alienvault_key: ""
+  cache_ttl_hours: 24
+  rate_limit_per_min: 10
+
+scoring:
+  abuseipdb_weight: 0.25
+  alienvault_weight: 0.20
+  behavior_weight: 0.30
+  temporal_weight: 0.10
+  central_weight: 0.15
+  block_threshold: 60
+  quarantine_score: 30
+  quarantine_minutes: 15
+  central_block_threshold: 80
+  central_quarantine_threshold: 50
+
+firewall:
+  table: vps_guard
+  set_name: blacklist
+  default_block_hours: 24
+
+notify:
+  telegram_token: ""
+  telegram_chat_id: ""
+  smtp_host: ""
+  smtp_port: 587
+  smtp_user: ""
+  smtp_pass: ""
+  email_from: ""
+  email_to: ""
+
+self_protect:
+  watchdog_interval_seconds: 30
+  enable_file_check: true
+
+central_feed:
+  enabled: false
+  api_url: "https://your-platform.com/api/v1/threat-feed"
+  api_token: ""
+  sync_interval_seconds: 60
+  min_confidence: 50

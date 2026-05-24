@@ -1,0 +1,20 @@
+# Binary
+vps-guard
+dist/
+
+# Environment
+.env
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+*.test
+*.out
+profile.cov

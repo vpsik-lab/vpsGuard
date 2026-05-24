@@ -1,0 +1,37 @@
+rules:
+  - name: aggressive_ssh
+    description: Block IPs with high SSH failure rate
+    conditions:
+      type: ssh_failed_login
+      attempts: ">10"
+      window_seconds: "<60"
+    action: block
+    score_weight: 40
+    duration: 24h
+
+  - name: port_scan
+    description: Block known port scanners
+    conditions:
+      type: port_scan
+      target_ports: ">5"
+    action: block
+    score_weight: 35
+    duration: 1h
+
+  - name: invalid_user
+    description: Block IPs trying non-existent users
+    conditions:
+      type: invalid_user
+      attempts: ">3"
+    action: block
+    score_weight: 20
+    duration: 15m
+
+  - name: central_feed_critical
+    description: Block IPs from central threat feed with high confidence
+    conditions:
+      source: central_feed
+      confidence: ">90"
+    action: block
+    score_weight: 50
+    duration: 48h

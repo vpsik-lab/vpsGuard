@@ -1,0 +1,23 @@
+[Unit]
+Description=VPS-Guard Security Agent
+Documentation=https://github.com/vps-guard/vps-guard
+After=network.target nftables.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/vps-guard -config /etc/vps-guard/config.yaml
+Restart=always
+RestartSec=5
+User=vps-guard
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_SYSLOG
+AmbientCapabilities=CAP_NET_ADMIN CAP_SYSLOG
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+MemoryMax=256M
+CPUQuota=50%
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target
