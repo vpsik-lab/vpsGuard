@@ -134,13 +134,15 @@ if [ "$HARDENING" = true ]; then
             run sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
             run sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
             run sed -i 's/^#*MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config
-            run systemctl restart sshd
+            SSH_SVC="ssh"; systemctl list-units --full -all | grep -q 'sshd\.service' && SSH_SVC="sshd"
+            run systemctl restart "$SSH_SVC"
             info "SSH hardened"
         fi
     else
         run sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
         run sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-        run systemctl restart sshd
+        SSH_SVC="ssh"; systemctl list-units --full -all | grep -q 'sshd\.service' && SSH_SVC="sshd"
+        run systemctl restart "$SSH_SVC"
         info "SSH hardened (unattended)"
     fi
 
