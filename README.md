@@ -12,7 +12,7 @@ Detects SSH brute-force, enriches with threat intelligence (AbuseIPDB, AlienVaul
 vpsGuard **Agent** is the on-premise component that runs on your VPS.  
 It monitors SSH logs, scores threat activity using a hybrid model, and blocks attackers.
 
-The **Central Platform** (Phase B — separate project) will provide a managed threat intelligence feed that agents can pull from.  
+The **Central Platform** (Phase B — in development) will provide a managed threat intelligence feed that agents can pull from.  
 See [`docs/AGENT-API-CONTRACT.md`](docs/AGENT-API-CONTRACT.md) for the interface between them.
 
 ---
@@ -27,6 +27,40 @@ See [`docs/AGENT-API-CONTRACT.md`](docs/AGENT-API-CONTRACT.md) for the interface
 - **Telegram + Email alerts** — Rich HTML notifications
 - **Self-protecting** — Watchdog, systemd sandbox, config integrity
 - **One-command deploy** — Under 30 seconds
+
+---
+
+## Project Status
+
+| Phase | Component | Status | Description |
+|-------|-----------|--------|-------------|
+| **A** | Agent (this repo) | ✅ **v0.2.0 — Stable** | On-premise SSH protection, hybrid scoring, nftables blocking |
+| **B** | Central Platform | 🔜 In development | Managed threat intelligence feed, agent telemetry, geo-targeted blocking |
+| **C** | Dashboard & Analytics | 📋 Planned | Web dashboard, multi-agent management, attack visualization |
+
+The Agent is fully functional standalone. Phase B/C are **separate projects** — the Agent's behaviour is unaffected if they never ship.
+
+---
+
+## License & Editions
+
+vpsGuard is **open-core**: the Agent is free and open-source under **GNU AGPLv3**.
+
+| Feature | Free (AGPLv3) | Paid (Platform) |
+|---------|---------------|-----------------|
+| SSH brute-force detection | ✅ | ✅ |
+| Local hybrid scoring | ✅ | ✅ |
+| nftables auto-blocking | ✅ | ✅ |
+| Threat intel (AbuseIPDB + OTX) | ✅ | ✅ |
+| Telegram + Email alerts | ✅ | ✅ |
+| Configurable thresholds | ✅ | ✅ |
+| All source code available | ✅ (AGPLv3) | ❌ (proprietary) |
+| **Central threat feed** | ❌ (requires Platform) | ✅ (submission-based) |
+| Global IP reputation network | ❌ | ✅ |
+| Multi-agent dashboard | ❌ | ✅ |
+| Priority support | ❌ | ✅ |
+
+**Zero telemetry**: the free Agent never phones home — no outbound connections unless you configure AbuseIPDB/OTX APIs.
 
 ---
 

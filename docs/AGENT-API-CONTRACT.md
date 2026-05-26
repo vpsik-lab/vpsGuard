@@ -1,12 +1,14 @@
 # vpsGuard Agent — Central Platform API Contract
 
 **Version**: 0.2.0  
-**Status**: Draft  
-**Last Updated**: 2026-05-24
+**Status**: Draft — Phase B (separate project, in development)  
+**Last Updated**: 2026-05-26
 
 > This document defines the HTTP API contract between the vpsGuard **Agent** and the **Central Platform**.  
 > The Agent is the consumer; the Platform is the provider.  
 > Both sides can be developed independently as long as this contract is honoured.
+>
+> **Note**: The Central Platform is a **paid-only** component. The free Agent (AGPLv3) works fully without it. This contract exists for future compatibility.
 
 ---
 

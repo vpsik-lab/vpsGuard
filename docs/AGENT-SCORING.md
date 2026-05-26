@@ -1,7 +1,8 @@
 # vpsGuard Agent — Scoring Engine
 
 **Version**: 0.2.0  
-**Status**: Stable
+**Status**: Stable  
+**Phase**: A — Agent (standalone, open-source)
 
 > The Agent uses a **hybrid weighted scoring model** that fuses multiple independent signals into a single 0–100 threat score per IP address.
 
@@ -104,11 +105,13 @@ Memory is cleaned up hourly (goroutine in `main.go`).
 
 ### 2.5 Central Feed Score (weight: 0.15)
 
-**Input**: Threat items pulled from the Central Platform API.
+**Input**: Threat items pulled from the Central Platform API (Phase B — in development).
 
 **Scoring logic**:
 - `score` from feed item mapped directly (0–100)
 - Filtered by `min_confidence` threshold
+
+> **Note**: The Central Feed is a **paid-only** feature requiring the Central Platform (separate project). The Agent works fully without it — local + AbuseIPDB + OTX scoring suffice for standalone operation.
 
 ---
 

@@ -1,9 +1,10 @@
 # vpsGuard Agent — Architecture
 
 **Version**: 0.2.0  
-**Status**: Stable
+**Status**: Stable  
+**Phase**: A — Agent (standalone, open-source)
 
-> This document describes the Agent's internal architecture. The Central Platform is a separate system; see [`AGENT-API-CONTRACT.md`](AGENT-API-CONTRACT.md) for the interface between them.
+> This document describes the Agent's internal architecture. The Central Platform is a separate system (Phase B); see [`AGENT-API-CONTRACT.md`](AGENT-API-CONTRACT.md) for the interface between them.
 
 ---
 
