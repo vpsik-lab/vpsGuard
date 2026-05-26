@@ -103,7 +103,20 @@ See [`docs/AGENT-DEPLOYMENT.md`](docs/AGENT-DEPLOYMENT.md) for full installation
 | [`AGENT-DEPLOYMENT.md`](docs/AGENT-DEPLOYMENT.md) | Install, configure, manage, troubleshoot |
 | [`AGENT-API-CONTRACT.md`](docs/AGENT-API-CONTRACT.md) | Contract between Agent and Central Platform |
 | [`THREAT_MODEL.md`](docs/THREAT_MODEL.md) | Threat model, trust boundaries, attack scenarios |
+| [`TEST-COVERAGE.md`](docs/TEST-COVERAGE.md) | Unit test inventory (19 files, 136 tests) |
 | [`RFC-0001-event-model.md`](docs/RFC-0001-event-model.md) | Event schema specification |
+
+---
+
+## Quality
+
+| Metric | Status |
+|--------|--------|
+| **Tests** | 136 test functions across 19 files — all 11 packages pass |
+| **Race detection** | `go test -race ./...` ✅ (CI enforces) |
+| **Static analysis** | `go vet ./...` ✅ |
+| **Build** | `go build ./...` ✅ amd64 / arm64 / arm |
+| **Test docs** | [`docs/TEST-COVERAGE.md`](docs/TEST-COVERAGE.md) |
 
 ---
 
