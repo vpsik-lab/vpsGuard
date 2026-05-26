@@ -1,5 +1,6 @@
 # Binary
-vps-guard
+/vps-guard
+vps-guard-*
 dist/
 
 # Environment
