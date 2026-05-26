@@ -23,6 +23,14 @@ Options:
   --skip-docker     Skip Docker hardening
   --ssh-port <n>    SSH port (default: 22)
   -h, --help        Show this help
+
+Examples:
+  bash harden.sh                       Interactive
+  bash harden.sh --unattended          Auto hardening
+  bash harden.sh --skip-docker         Skip Docker section
+
+  # Via curl pipe (requires root/sudo):
+  curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/harden.sh | sudo bash -s -- --unattended
 EOF
     exit 0
 }

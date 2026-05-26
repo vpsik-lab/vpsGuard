@@ -88,12 +88,13 @@ sudo ./vpsGuard -config /etc/vpsGuard/config.yaml
 
 Or use the install script:
 ```bash
-curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | bash
+# Requires root/sudo:
+curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | sudo bash
 ```
 
-For unattended installation:
+For unattended installation (non-root with sudo):
 ```bash
-curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | bash -s -- --unattended
+curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | sudo bash -s -- --unattended
 ```
 
 See [`docs/AGENT-DEPLOYMENT.md`](docs/AGENT-DEPLOYMENT.md) for full installation options.

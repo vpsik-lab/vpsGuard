@@ -38,6 +38,9 @@ Examples:
   bash install.sh --unattended                 Auto install
   bash install.sh --uninstall                  Full removal
   bash install.sh --ssh-port 2222 --unattended  Custom SSH port
+
+  # Via curl pipe (requires root/sudo):
+  curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | sudo bash -s -- --unattended
 EOF
     exit 0
 }
