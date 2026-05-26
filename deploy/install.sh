@@ -215,7 +215,10 @@ else
             run apt-get install -y -qq golang-go 2>/dev/null || true
     fi
     if command -v go &>/dev/null; then
-        run go build -o "$PREFIX/bin/$BINARY" -ldflags="-s -w" ./cmd/vps-guard
+        BUILD_DIR=$(mktemp -d)
+        git clone --depth 1 "https://github.com/$REPO.git" "$BUILD_DIR/src" 2>/dev/null || true
+        (cd "$BUILD_DIR/src" && go build -o "$PREFIX/bin/$BINARY" -ldflags="-s -w" ./cmd/vps-guard)
+        rm -rf "$BUILD_DIR"
         installed_from="source"
         info "Binary built: $PREFIX/bin/$BINARY"
     else
