@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/vpsik-lab/vpsGuard/internal/monitor"
 	"github.com/vpsik-lab/vpsGuard/internal/notify"
 	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/reporting"
 	"github.com/vpsik-lab/vpsGuard/internal/rules"
 	"github.com/vpsik-lab/vpsGuard/internal/selfprotect"
 	"github.com/vpsik-lab/vpsGuard/internal/threat"
@@ -39,8 +41,14 @@ func main() {
 	configPath := flag.String("config", "/etc/vpsGuard/config.yaml", "path to config file")
 	showVersion := flag.Bool("version", false, "show version and exit")
 	genChecksum := flag.Bool("gen-checksum", false, "compute and print SHA256 of config file")
+	hashChainDir := flag.String("hash-chain", "", "append hash chain entry for logs in directory")
 	healthAddr := flag.String("health-addr", "127.0.0.1:9090", "health endpoint listen address")
 	flag.Parse()
+
+	if *hashChainDir != "" {
+		runHashChain(*hashChainDir)
+		return
+	}
 
 	if *showVersion {
 		fmt.Printf("vpsGuard version %s (commit: %s, built: %s)\n", version, commit, date)
@@ -124,6 +132,7 @@ func main() {
 	scorer := engine.NewScorer(cfg, logger)
 	decision := engine.NewDecision(cfg, fw, logger)
 	notifier := notify.NewNotifier(cfg, logger)
+	reporter := reporting.NewDailyReporter(cfg, logger, notifier)
 	rulesEngine := rules.NewEngine(cfg, logger)
 	rulesEngine.LoadDefaults()
 	pullClient := api.NewPullClient(cfg, logger, intelClient)
@@ -160,6 +169,7 @@ func main() {
 	go pullClient.Start(ctx)
 	go watchdog.Run(ctx)
 	go healthSrv.ListenAndServe(ctx, *healthAddr)
+	go reporter.Run(ctx)
 
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
@@ -186,7 +196,7 @@ func main() {
 		for {
 			select {
 			case evt := <-eventCh:
-				processEvent(ctx, cfg, logger, scorer, decision, notifier, rulesEngine, intelClient, fw, blockStore, auditLog, evt)
+				processEvent(ctx, cfg, logger, scorer, decision, notifier, reporter, rulesEngine, intelClient, fw, blockStore, auditLog, evt)
 			case <-ctx.Done():
 				return
 			}
@@ -206,6 +216,7 @@ func processEvent(
 	scorer *engine.Scorer,
 	decision *engine.DecisionEngine,
 	notifier *notify.Notifier,
+	reporter *reporting.DailyReporter,
 	rulesEngine *rules.Engine,
 	intelClient *threat.IntelClient,
 	fw *firewall.NftablesManager,
@@ -218,6 +229,8 @@ func processEvent(
 		zap.String("type", string(evt.Event.EventType())),
 		zap.String("trace_id", evt.TraceID),
 	)
+
+	reporter.IncrementEventCount()
 
 	scorer.RecordEvent(evt)
 	scores := scorer.Evaluate(ctx, evt, intelClient)
@@ -277,4 +290,51 @@ func newLogger(logDir string) (*zap.Logger, error) {
 		cfg.OutputPaths = append(cfg.OutputPaths, filepath.Join(logDir, "vpsGuard.log"))
 	}
 	return cfg.Build()
+}
+
+func runHashChain(dir string) {
+	chainFile := filepath.Join(dir, "log-hashes.yaml")
+
+	var existing []byte
+	if data, err := os.ReadFile(chainFile); err == nil {
+		existing = data
+	}
+
+	prevHash := ""
+	lines := strings.Split(strings.TrimSpace(string(existing)), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if strings.HasPrefix(lines[i], "  sha256: ") {
+			prevHash = strings.TrimPrefix(lines[i], "  sha256: ")
+			break
+		}
+	}
+
+	now := time.Now().UTC().Format("2006-01-02")
+	var newHash string
+
+	files, _ := filepath.Glob(filepath.Join(dir, "*.log.*"))
+	jsonlFiles, _ := filepath.Glob(filepath.Join(dir, "*.jsonl.*"))
+	files = append(files, jsonlFiles...)
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		h := sha256.Sum256(data)
+		newHash = hex.EncodeToString(h[:])
+	}
+
+	if newHash == "" {
+		os.Exit(0)
+	}
+
+	var chainData string
+	if len(existing) == 0 {
+		chainData = fmt.Sprintf("chain:\n  - date: %s\n    file: %s\n    sha256: %s\n    prev: \"\"\n",
+			now, filepath.Base(files[0]), newHash)
+	} else {
+		chainData = fmt.Sprintf("%s  - date: %s\n    file: %s\n    sha256: %s\n    prev: %s\n",
+			string(existing), now, filepath.Base(files[0]), newHash, prevHash)
+	}
+	os.WriteFile(chainFile, []byte(chainData), 0644)
 }

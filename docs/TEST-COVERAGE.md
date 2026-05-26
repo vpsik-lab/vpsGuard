@@ -1,12 +1,12 @@
 # vpsGuard — Test Coverage Report
 
-**Version**: 0.2.0  
+**Version**: 0.3.0  
 **Last Updated**: 2026-05-26  
-**Total test files**: 19  
-**Total test functions**: 136  
+**Total test files**: 20  
+**Total test functions**: 146  
 **Build**: `go build ./...` ✅  
 **Vet**: `go vet ./...` ✅  
-**Tests**: `go test ./...` ✅ (all 11 packages pass)
+**Tests**: `go test ./...` ✅ (all 12 packages pass)
 
 ---
 
@@ -29,12 +29,13 @@
 | `internal/monitor` | `parser_test.go` | 3 | SSH log parsing, event conversion |
 | `internal/notify` | `notifier_test.go` | 11 | Telegram/email formatting, cooldown logic |
 | `internal/pipeline` | `bus_test.go` | 10 | Event bus subscribe/publish/fan-out/context |
+| `internal/reporting` | `reporter_test.go` | 10 | Daily reporter, format, hash chain, uptime |
 | `internal/rules` | `engine_test.go` | 11 | Rule matching, numeric/string conditions, YAML loading |
 | `internal/selfprotect` | `watchdog_test.go` | 9 | Watchdog ping/uptime, checksum match/mismatch |
 | `internal/threat` | `alienvault_test.go` | 3 | OTX pulse scoring, client creation |
 | `internal/threat` | `cache_test.go` | 11 | IP cache get/set/expiry/cleanup, central score |
 
-**Total**: 19 files · 136 test functions · 11 packages
+**Total**: 20 files · 146 test functions · 12 packages
 
 ---
 

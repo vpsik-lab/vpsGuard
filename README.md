@@ -22,11 +22,17 @@ See [`docs/AGENT-API-CONTRACT.md`](docs/AGENT-API-CONTRACT.md) for the interface
 - **Real-time monitoring** — auth.log + systemd journal
 - **Hybrid scoring** — Behavioral (30%) + AbuseIPDB (25%) + OTX (20%) + Temporal (10%) + Central Feed (15%)
 - **Configurable thresholds** — Block, rate-limit, quarantine scores + behavior window/limit + temporal TTL all via `config.yaml`
-- **nftables blocking** — Dynamic sets with auto-expire
+- **nftables blocking** — Dynamic sets with auto-expire (IPv4 + IPv6 dual-stack)
+- **IP Whitelist** — Protect critical IPs from accidental blocking
+- **SHA256 verification** — install.sh verifies binary checksums before install
 - **Works offline** — Fully functional without internet
 - **Telegram + Email alerts** — Rich HTML notifications
-- **Self-protecting** — Watchdog, systemd sandbox, config integrity
+- **Daily reports** — Optional Telegram report every 24h with security summary
+- **Log integrity** — Hash chain for audit log tamper detection
+- **Self-protecting** — Watchdog, systemd sandbox, config integrity, AppArmor profile
 - **One-command deploy** — Under 30 seconds
+- **Full uninstall** — `bash install.sh --uninstall` undoes everything
+- **VPS hardening** — Optional `deploy/harden.sh` (SSH, UFW, BBR, sysctl, auditd, AppArmor, Docker, auto-updates, process accounting)
 
 ---
 
@@ -34,7 +40,7 @@ See [`docs/AGENT-API-CONTRACT.md`](docs/AGENT-API-CONTRACT.md) for the interface
 
 | Phase | Component | Status | Description |
 |-------|-----------|--------|-------------|
-| **A** | Agent (this repo) | ✅ **v0.2.0 — Stable** | On-premise SSH protection, hybrid scoring, nftables blocking |
+| **A** | Agent (this repo) | ✅ **v0.3.0 — Stable** | On-premise SSH protection, hybrid scoring, nftables blocking, VPS hardening, daily reports |
 | **B** | Central Platform | 🔜 In development | Managed threat intelligence feed, agent telemetry, geo-targeted blocking |
 | **C** | Dashboard & Analytics | 📋 Planned | Web dashboard, multi-agent management, attack visualization |
 

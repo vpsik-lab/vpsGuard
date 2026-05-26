@@ -18,6 +18,7 @@ type Config struct {
 	Scoring   ScoringConfig   `yaml:"scoring"`
 	Firewall  FirewallConfig  `yaml:"firewall"`
 	Notify    NotifyConfig    `yaml:"notify"`
+	Report    ReportConfig    `yaml:"daily_report"`
 	SelfProtect SelfProtectConfig `yaml:"self_protect"`
 	CentralFeed CentralFeedConfig `yaml:"central_feed"`
 }
@@ -60,9 +61,11 @@ type ScoringConfig struct {
 }
 
 type FirewallConfig struct {
-	Table    string `yaml:"table"`
-	SetName  string `yaml:"set_name"`
+	Table    string   `yaml:"table"`
+	SetName  string   `yaml:"set_name"`
+	SetNameV6 string  `yaml:"set_name_v6"`
 	DefaultBlockDuration int `yaml:"default_block_hours"`
+	Whitelist []string `yaml:"whitelist"`
 }
 
 type NotifyConfig struct {
@@ -89,6 +92,13 @@ type CentralFeedConfig struct {
 	APIToken      string `yaml:"api_token"`
 	SyncInterval  int    `yaml:"sync_interval_seconds"`
 	MinConfidence int    `yaml:"min_confidence"`
+}
+
+type ReportConfig struct {
+	Enabled       bool `yaml:"enabled"`
+	IntervalHours int  `yaml:"interval_hours"`
+	SendTelegram  bool `yaml:"send_telegram"`
+	SendEmail     bool `yaml:"send_email"`
 }
 
 func Load(path string) (*Config, error) {
@@ -183,6 +193,9 @@ func (c *Config) SetDefaults() {
 	if c.Firewall.SetName == "" {
 		c.Firewall.SetName = "blacklist"
 	}
+	if c.Firewall.SetNameV6 == "" {
+		c.Firewall.SetNameV6 = "blacklist6"
+	}
 	if c.Firewall.DefaultBlockDuration <= 0 {
 		c.Firewall.DefaultBlockDuration = 24
 	}
@@ -201,6 +214,18 @@ func (c *Config) SetDefaults() {
 	if c.CentralFeed.MinConfidence <= 0 {
 		c.CentralFeed.MinConfidence = 50
 	}
+	if c.Report.IntervalHours <= 0 {
+		c.Report.IntervalHours = 24
+	}
+}
+
+func (f *FirewallConfig) IsWhitelisted(ip string) bool {
+	for _, w := range f.Whitelist {
+		if w == ip {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Config) Validate() error {

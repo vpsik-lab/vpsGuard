@@ -1,4 +1,6 @@
-/var/log/vps-guard/*.log {
+/var/log/vpsGuard/*.log
+/var/log/vpsGuard/*.jsonl
+{
     daily
     rotate 7
     compress
@@ -6,4 +8,7 @@
     missingok
     notifempty
     copytruncate
+    postrotate
+        /usr/local/bin/vpsGuard -hash-chain /var/log/vpsGuard
+    endscript
 }

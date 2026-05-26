@@ -1,0 +1,25 @@
+# vpsGuard Security Agent AppArmor profile
+abi <abi/4.0>,
+include <tunables/global>
+
+/usr/local/bin/vpsGuard {
+    include <abstractions/base>
+    include <abstractions/openssl>
+
+    /etc/vpsGuard/** r,
+    /var/log/vpsGuard/** rw,
+    /var/cache/vpsGuard/** rw,
+    /etc/ssl/** r,
+    /sys/kernel/security/** r,
+
+    network inet dgram,
+    network inet stream,
+    network inet6 dgram,
+    network inet6 stream,
+
+    capability net_admin,
+    capability syslog,
+
+    /usr/bin/nft rix,
+    /sbin/nft rix,
+}

@@ -1,10 +1,10 @@
-BINARY=vps-guard
+BINARY=vpsGuard
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "0.2.0")
 COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS=-ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 PREFIX=/usr/local
-CONFIG_DIR=/etc/vps-guard
+CONFIG_DIR=/etc/vpsGuard
 SYSTEMD_DIR=/etc/systemd/system
 DESTDIR=
 
@@ -13,31 +13,31 @@ DESTDIR=
 all: build
 
 build:
-	go build $(LDFLAGS) -o $(BINARY) ./cmd/vps-guard
+	go build $(LDFLAGS) -o $(BINARY) ./cmd/vpsGuard
 
 build-race:
-	go build -race $(LDFLAGS) -o $(BINARY) ./cmd/vps-guard
+	go build -race $(LDFLAGS) -o $(BINARY) ./cmd/vpsGuard
 
 install: build
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(CONFIG_DIR)
-	mkdir -p $(DESTDIR)/var/log/vps-guard
-	mkdir -p $(DESTDIR)/var/cache/vps-guard
+	mkdir -p $(DESTDIR)/var/log/vpsGuard
+	mkdir -p $(DESTDIR)/var/cache/vpsGuard
 	cp $(BINARY) $(DESTDIR)$(PREFIX)/bin/
 	cp config.yaml $(DESTDIR)$(CONFIG_DIR)/
-	cp deploy/vps-guard.service $(DESTDIR)$(SYSTEMD_DIR)/
-	cp deploy/vps-guard.logrotate $(DESTDIR)/etc/logrotate.d/vps-guard
+	cp deploy/vpsGuard.service $(DESTDIR)$(SYSTEMD_DIR)/
+	cp deploy/vpsGuard.logrotate $(DESTDIR)/etc/logrotate.d/vpsGuard
 	chmod 600 $(DESTDIR)$(CONFIG_DIR)/config.yaml
 	systemctl daemon-reload 2>/dev/null || true
-	systemctl enable vps-guard 2>/dev/null || true
-	systemctl start vps-guard 2>/dev/null || true
+	systemctl enable vpsGuard 2>/dev/null || true
+	systemctl start vpsGuard 2>/dev/null || true
 
 uninstall:
-	systemctl stop vps-guard 2>/dev/null || true
-	systemctl disable vps-guard 2>/dev/null || true
+	systemctl stop vpsGuard 2>/dev/null || true
+	systemctl disable vpsGuard 2>/dev/null || true
 	rm -f $(DESTDIR)$(PREFIX)/bin/$(BINARY)
-	rm -f $(DESTDIR)$(SYSTEMD_DIR)/vps-guard.service
-	rm -f $(DESTDIR)/etc/logrotate.d/vps-guard
+	rm -f $(DESTDIR)$(SYSTEMD_DIR)/vpsGuard.service
+	rm -f $(DESTDIR)/etc/logrotate.d/vpsGuard
 	systemctl daemon-reload 2>/dev/null || true
 
 test:
@@ -57,13 +57,13 @@ clean:
 cross-build: cross-amd64 cross-arm64 cross-arm
 
 cross-amd64:
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/$(BINARY)-linux-amd64 ./cmd/vps-guard
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/$(BINARY)-linux-amd64 ./cmd/vpsGuard
 
 cross-arm64:
-	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/$(BINARY)-linux-arm64 ./cmd/vps-guard
+	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/$(BINARY)-linux-arm64 ./cmd/vpsGuard
 
 cross-arm:
-	GOOS=linux GOARCH=arm go build $(LDFLAGS) -o dist/$(BINARY)-linux-arm ./cmd/vps-guard
+	GOOS=linux GOARCH=arm go build $(LDFLAGS) -o dist/$(BINARY)-linux-arm ./cmd/vpsGuard
 
 # Release: cross-build + checksum
 release: cross-build

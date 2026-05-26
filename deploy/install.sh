@@ -11,16 +11,13 @@ SYSTEMD_DIR="/etc/systemd/system"
 CACHE_DIR="/var/cache/vpsGuard"
 LOG_DIR="/var/log/vpsGuard"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 
 DRY_RUN=false
 UNATTENDED=false
 HARDENING=true
 SSH_PORT=22
+UNINSTALL=false
 
 usage() {
     cat <<EOF
@@ -33,15 +30,14 @@ Options:
   --unattended      Run without prompts (use defaults)
   --no-hardening    Skip SSH/firewall/kernel hardening
   --ssh-port <n>    SSH port for firewall rules (default: 22)
+  --uninstall       Remove vpsGuard completely (full rollback)
   -h, --help        Show this help
 
 Examples:
   bash install.sh                              Interactive install
   bash install.sh --unattended                 Auto install
-  bash install.sh --no-hardening               Install agent only
+  bash install.sh --uninstall                  Full removal
   bash install.sh --ssh-port 2222 --unattended  Custom SSH port
-
-VERSION=latest bash install.sh                 Install specific version
 EOF
     exit 0
 }
@@ -52,6 +48,7 @@ while [[ $# -gt 0 ]]; do
         --unattended) UNATTENDED=true; shift ;;
         --no-hardening) HARDENING=false; shift ;;
         --ssh-port) SSH_PORT="$2"; shift 2 ;;
+        --uninstall) UNINSTALL=true; shift ;;
         -h|--help) usage ;;
         *) echo "Unknown option: $1"; usage ;;
     esac
@@ -69,6 +66,67 @@ info()  { echo -e "${GREEN}[*]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $*"; }
 error() { echo -e "${RED}[!]${NC} $*"; }
 
+if [ "$DRY_RUN" = false ] && [ "$EUID" -ne 0 ]; then
+    error "Please run as root"
+    exit 1
+fi
+
+# ── Uninstall mode ─────────────────────────────────────────
+if [ "$UNINSTALL" = true ]; then
+    echo -e "${CYAN}╔══════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║      vpsGuard Uninstall                ║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
+    info "Starting full uninstall..."
+
+    run systemctl stop vpsGuard 2>/dev/null || true
+    run systemctl disable vpsGuard 2>/dev/null || true
+
+    run rm -f "$SYSTEMD_DIR/vpsGuard.service"
+    run rm -f "$PREFIX/bin/$BINARY"
+    run rm -rf "$CONFIG_DIR" "$LOG_DIR" "$CACHE_DIR"
+    run rm -f /etc/logrotate.d/vpsGuard
+    run rm -f /etc/sysctl.d/99-vpsGuard.conf
+
+    # Restore nftables
+    if command -v nft &>/dev/null; then
+        run nft delete table inet vpsGuard 2>/dev/null || true
+    fi
+
+    # Remove vpsGuard user
+    run userdel vpsGuard 2>/dev/null || true
+
+    # Restore SSH config from backup
+    if [ -f /etc/ssh/sshd_config.vpsguard.bak ]; then
+        run cp /etc/ssh/sshd_config.vpsguard.bak /etc/ssh/sshd_config
+        run rm -f /etc/ssh/sshd_config.vpsguard.bak
+        SSH_SVC="ssh"
+        systemctl list-units --full -all 2>/dev/null | grep -q 'sshd\.service' && SSH_SVC="sshd" || true
+        run systemctl restart "$SSH_SVC" || warn "Could not restart SSH — restore manually: /etc/ssh/sshd_config.vpsguard.bak"
+        info "SSH config restored from backup"
+    fi
+
+    # Disable UFW
+    if command -v ufw &>/dev/null; then
+        run ufw disable 2>/dev/null || true
+        info "UFW disabled"
+    fi
+
+    # Remove fail2ban jail
+    if [ -f /etc/fail2ban/jail.local ]; then
+        if grep -q 'vpsGuard' /etc/fail2ban/jail.local 2>/dev/null; then
+            run rm -f /etc/fail2ban/jail.local
+            run systemctl restart fail2ban 2>/dev/null || true
+            info "Fail2ban vpsGuard jail removed"
+        fi
+    fi
+
+    run systemctl daemon-reload 2>/dev/null || true
+
+    info "vpsGuard fully uninstalled"
+    exit 0
+fi
+
+# ── Install mode ──────────────────────────────────────────
 if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
     error "curl or wget required"
     exit 1
@@ -88,11 +146,6 @@ echo "║        vpsGuard Security Agent         ║"
 echo "║     Lightweight Intelligent Protection  ║"
 echo "╚══════════════════════════════════════════╝"
 echo -e "${NC}"
-
-if [ "$DRY_RUN" = false ] && [ "$EUID" -ne 0 ]; then
-    error "Please run as root"
-    exit 1
-fi
 
 if [ -f /etc/os-release ]; then
     . /etc/os-release
@@ -122,6 +175,12 @@ if [ "$HARDENING" = true ]; then
     run ufw allow "$SSH_PORT"/tcp 2>/dev/null || true
 
     info "Hardening SSH..."
+    # Backup before modifying
+    if [ "$DRY_RUN" = false ] && [ ! -f /etc/ssh/sshd_config.vpsguard.bak ]; then
+        cp /etc/ssh/sshd_config /etc/ssh/sshd_config.vpsguard.bak
+        info "SSH config backed up to /etc/ssh/sshd_config.vpsguard.bak"
+    fi
+
     if [ "$UNATTENDED" = false ]; then
         echo ""
         warn "SSH hardening will: disable root login, disable password auth"
@@ -134,13 +193,19 @@ if [ "$HARDENING" = true ]; then
             run sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
             run sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
             run sed -i 's/^#*MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config
+            run sed -i 's/^#*ClientAliveInterval.*/ClientAliveInterval 300/' /etc/ssh/sshd_config
+            run sed -i 's/^#*ClientAliveCountMax.*/ClientAliveCountMax 2/' /etc/ssh/sshd_config
             SSH_SVC="ssh"
             systemctl list-units --full -all 2>/dev/null | grep -q 'sshd\.service' && SSH_SVC="sshd" || true
             run systemctl restart "$SSH_SVC"
             info "SSH hardened"
         fi
     else
+        run sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
         run sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+        run sed -i 's/^#*MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config
+        run sed -i 's/^#*ClientAliveInterval.*/ClientAliveInterval 300/' /etc/ssh/sshd_config
+        run sed -i 's/^#*ClientAliveCountMax.*/ClientAliveCountMax 2/' /etc/ssh/sshd_config
         SSH_SVC="ssh"
         systemctl list-units --full -all 2>/dev/null | grep -q 'sshd\.service' && SSH_SVC="sshd" || true
         run systemctl restart "$SSH_SVC"
@@ -152,6 +217,7 @@ if [ "$HARDENING" = true ]; then
         echo "[DRY-RUN] Create /etc/sysctl.d/99-vpsGuard.conf"
     else
         cat > /etc/sysctl.d/99-vpsGuard.conf << 'EOF'
+# vpsGuard kernel hardening
 net.ipv4.tcp_syncookies=1
 net.ipv4.tcp_synack_retries=2
 net.ipv4.conf.all.rp_filter=1
@@ -159,6 +225,14 @@ net.ipv4.conf.default.rp_filter=1
 net.ipv4.conf.all.accept_source_route=0
 net.ipv4.icmp_echo_ignore_broadcasts=1
 net.ipv4.icmp_ignore_bogus_error_responses=1
+net.ipv4.tcp_fastopen=3
+net.ipv4.tcp_keepalive_time=300
+net.ipv4.tcp_keepalive_intvl=60
+net.ipv4.tcp_keepalive_probes=5
+net.netfilter.nf_conntrack_max=262144
+net.core.somaxconn=65535
+net.ipv4.tcp_max_syn_backlog=8192
+net.ipv4.tcp_syn_retries=3
 EOF
         sysctl -p /etc/sysctl.d/99-vpsGuard.conf >/dev/null 2>&1 || true
     fi
@@ -204,12 +278,62 @@ if [ "$VERSION" = "latest" ]; then
         | tr -d ' "') || true
 fi
 
+# ── SHA256 verification ──────────────────────────────────
+verify_sha256() {
+    local binary="$1"
+    local checksums_url="$2"
+    local arch_suffix="$3"
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    local cs_file="$tmpdir/checksums.txt"
+    local expected actual
+
+    if fetch "$checksums_url" > "$cs_file" 2>/dev/null; then
+        expected=$(grep "$BINARY-linux-$arch_suffix" "$cs_file" | awk '{print $1}')
+        if [ -n "$expected" ]; then
+            actual=$(sha256sum "$binary" | awk '{print $1}')
+            if [ "$expected" != "$actual" ]; then
+                error "SHA256 mismatch for $BINARY-linux-$arch_suffix"
+                error "  Expected: $expected"
+                error "  Actual:   $actual"
+                rm -rf "$tmpdir"
+                return 1
+            fi
+            info "SHA256 verified: $actual"
+        else
+            warn "No checksum entry for $BINARY-linux-$arch_suffix"
+        fi
+    else
+        warn "Could not download checksums.txt — skipping verification"
+    fi
+    rm -rf "$tmpdir"
+    return 0
+}
+
 installed_from=""
-if [ -n "$DOWNLOAD_URL" ] && fetch "$DOWNLOAD_URL" -o "$PREFIX/bin/$BINARY" 2>/dev/null; then
-    run chmod +x "$PREFIX/bin/$BINARY"
-    installed_from="download"
-    info "Binary downloaded: $PREFIX/bin/$BINARY"
-else
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+if [ -n "$DOWNLOAD_URL" ]; then
+    if fetch "$DOWNLOAD_URL" > "$TMP_DIR/$BINARY" 2>/dev/null; then
+        TAG=$(echo "$DOWNLOAD_URL" | grep -oP 'download/\K[^/]+' || echo "$VERSION")
+        CHECKSUMS_URL="https://github.com/$REPO/releases/download/$TAG/checksums.txt"
+
+        if verify_sha256 "$TMP_DIR/$BINARY" "$CHECKSUMS_URL" "$ARCH"; then
+            run mv "$TMP_DIR/$BINARY" "$PREFIX/bin/$BINARY"
+            run chmod +x "$PREFIX/bin/$BINARY"
+            installed_from="download"
+            info "Binary installed: $PREFIX/bin/$BINARY"
+        else
+            error "Binary rejected — SHA256 verification failed"
+            exit 1
+        fi
+    else
+        warn "Binary download failed, building from source..."
+    fi
+fi
+
+if [ -z "$installed_from" ]; then
     info "Building from source..."
     if ! command -v go &>/dev/null; then
         warn "Go not found, installing..."
@@ -292,7 +416,11 @@ scoring:
 firewall:
   table: vpsGuard
   set_name: blacklist
+  set_name_v6: blacklist6
   default_block_hours: 24
+  whitelist:
+    - 127.0.0.1
+    - ::1
 notify:
   telegram_token: ""
   telegram_chat_id: ""
@@ -303,6 +431,11 @@ notify:
   email_from: ""
   email_to: ""
   cooldown_minutes: 10
+daily_report:
+  enabled: false
+  interval_hours: 24
+  send_telegram: true
+  send_email: false
 self_protect:
   watchdog_interval_seconds: 30
   enable_file_check: true
@@ -366,7 +499,9 @@ else
         fetch "$RAW_BASE/deploy/vpsGuard.logrotate" > /etc/logrotate.d/vpsGuard
     else
         cat > /etc/logrotate.d/vpsGuard << 'LOGEOF'
-/var/log/vpsGuard/*.log {
+/var/log/vpsGuard/*.log
+/var/log/vpsGuard/*.jsonl
+{
     daily
     rotate 7
     compress
@@ -374,6 +509,9 @@ else
     missingok
     notifempty
     copytruncate
+    postrotate
+        /usr/local/bin/vpsGuard -hash-chain /var/log/vpsGuard
+    endscript
 }
 LOGEOF
     fi
@@ -410,12 +548,13 @@ if [ "$DRY_RUN" = false ]; then
     systemctl status vpsGuard
     journalctl -u vpsGuard -f
     nano $CONFIG_DIR/config.yaml
+    bash deploy/harden.sh   (VPS hardening)
 
   Configure APIs:
     $CONFIG_DIR/config.yaml
-      → threat.abuseipdb_key
-      → threat.alienvault_key
-      → notify.telegram_token
+      \u2192 threat.abuseipdb_key
+      \u2192 threat.alienvault_key
+      \u2192 notify.telegram_token
 
 EOF
 fi

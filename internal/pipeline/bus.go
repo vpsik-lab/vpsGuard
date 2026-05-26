@@ -3,14 +3,16 @@ package pipeline
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 )
 
 type Bus struct {
-	mu        sync.RWMutex
-	listeners []chan Envelope
-	logger    *zap.Logger
+	mu           sync.RWMutex
+	listeners    []chan Envelope
+	logger       *zap.Logger
+	droppedCount atomic.Uint64
 }
 
 func NewBus(logger *zap.Logger) *Bus {
@@ -29,9 +31,11 @@ func (b *Bus) Publish(ctx context.Context, evt Envelope) {
 		case <-ctx.Done():
 			return
 		default:
+			count := b.droppedCount.Add(1)
 			b.logger.Warn("dropped event",
 				zap.String("ip", evt.SourceIP()),
 				zap.String("trace_id", evt.TraceID),
+				zap.Uint64("total_dropped", count),
 			)
 		}
 	}
@@ -40,7 +44,7 @@ func (b *Bus) Publish(ctx context.Context, evt Envelope) {
 func (b *Bus) Subscribe() chan Envelope {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	ch := make(chan Envelope, 1000)
+	ch := make(chan Envelope, 10000)
 	b.listeners = append(b.listeners, ch)
 	return ch
 }

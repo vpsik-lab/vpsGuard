@@ -39,6 +39,13 @@ func (d *DecisionEngine) Evaluate(ctx context.Context, evt pipeline.Envelope, sc
 	var actions []Action
 	ip := evt.SourceIP()
 
+	if d.cfg.Firewall.IsWhitelisted(ip) {
+		d.logger.Debug("IP whitelisted, skipping actions",
+			zap.String("ip", ip),
+		)
+		return actions
+	}
+
 	blockThreshold := d.cfg.Scoring.BlockThreshold
 	rateLimitScore := d.cfg.Scoring.RateLimitScore
 	rateLimitMin := time.Duration(d.cfg.Scoring.RateLimitMin) * time.Minute

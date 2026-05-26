@@ -41,7 +41,11 @@ scoring:
 firewall:
   table: vpsGuard
   set_name: blacklist
+  set_name_v6: blacklist6
   default_block_hours: 24
+  whitelist:
+    - 127.0.0.1
+    - ::1
 
 notify:
   telegram_token: ""
@@ -58,6 +62,12 @@ self_protect:
   watchdog_interval_seconds: 30
   enable_file_check: true
   config_checksum: ""
+
+daily_report:
+  enabled: false
+  interval_hours: 24
+  send_telegram: true
+  send_email: false
 
 central_feed:
   enabled: false

@@ -70,6 +70,19 @@ func (n *Notifier) Send(ctx context.Context, evt pipeline.Envelope, scores *engi
 	n.markSent(ip)
 }
 
+func (n *Notifier) SendReport(ctx context.Context, text string, useTelegram bool, useEmail bool) {
+	if n.telegram != nil && useTelegram {
+		if err := n.telegram.Send(ctx, text); err != nil {
+			n.logger.Error("telegram report send failed", zap.Error(err))
+		}
+	}
+	if n.email != nil && useEmail {
+		if err := n.email.Send(ctx, "vpsGuard Daily Report", text); err != nil {
+			n.logger.Error("email report send failed", zap.Error(err))
+		}
+	}
+}
+
 func (n *Notifier) onCooldown(ip string) bool {
 	if n.cooldown <= 0 {
 		return false

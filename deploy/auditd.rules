@@ -1,0 +1,10 @@
+# vpsGuard auditd rules — sensitive file watch only (no execve)
+-w /etc/passwd -p wa -k passwd_changes
+-w /etc/shadow -p wa -k shadow_changes
+-w /etc/ssh/sshd_config -p wa -k sshd_config
+-w /etc/sudoers -p wa -k sudoers
+-w /etc/sudoers.d/ -p wa -k sudoers_d
+-w /etc/docker/ -p wa -k docker_config
+-w /etc/vpsGuard/ -p wa -k vpsguard_config
+-w /etc/vpsGuard/config.yaml -p wa -k vpsguard_config_yaml
+-w /var/log/auth.log -p wa -k auth_log
