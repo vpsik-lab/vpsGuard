@@ -33,6 +33,7 @@ type HealthServer struct {
 	Addr      string
 	mu        sync.RWMutex
 	checkers  map[string]ComponentChecker
+	metrics   *AgentMetrics // optional Prometheus-compatible metrics
 }
 
 func NewHealthServer(logger *zap.Logger, version string) *HealthServer {
@@ -53,9 +54,10 @@ func (h *HealthServer) RegisterComponent(name string, checker ComponentChecker) 
 func (h *HealthServer) ListenAndServe(ctx context.Context, addr string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", h.handleHealth)
+	mux.HandleFunc("/metrics", h.handleMetrics)
 
 	h.server = &http.Server{
-		Handler:  mux,
+		Handler:     mux,
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 

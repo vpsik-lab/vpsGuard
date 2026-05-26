@@ -111,10 +111,43 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 	cfg.SetDefaults()
+	cfg.LoadEnvOverrides() // env vars override file values
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	return cfg, nil
+}
+
+// LoadEnvOverrides overrides sensitive config fields from environment variables.
+// Environment variables always take precedence over values in config.yaml.
+//
+// Supported variables:
+//
+//	VPSGUARD_ABUSEIPDB_KEY    — AbuseIPDB API key
+//	VPSGUARD_ALIENVAULT_KEY   — AlienVault OTX API key
+//	VPSGUARD_TELEGRAM_TOKEN   — Telegram bot token
+//	VPSGUARD_TELEGRAM_CHAT_ID — Telegram chat ID
+//	VPSGUARD_SMTP_PASS        — SMTP password
+//	VPSGUARD_CENTRAL_TOKEN    — Central Platform API token
+func (c *Config) LoadEnvOverrides() {
+	if v := os.Getenv("VPSGUARD_ABUSEIPDB_KEY"); v != "" {
+		c.Threat.AbuseIPDBKey = v
+	}
+	if v := os.Getenv("VPSGUARD_ALIENVAULT_KEY"); v != "" {
+		c.Threat.AlienVaultKey = v
+	}
+	if v := os.Getenv("VPSGUARD_TELEGRAM_TOKEN"); v != "" {
+		c.Notify.TelegramToken = v
+	}
+	if v := os.Getenv("VPSGUARD_TELEGRAM_CHAT_ID"); v != "" {
+		c.Notify.TelegramChatID = v
+	}
+	if v := os.Getenv("VPSGUARD_SMTP_PASS"); v != "" {
+		c.Notify.SMTPPass = v
+	}
+	if v := os.Getenv("VPSGUARD_CENTRAL_TOKEN"); v != "" {
+		c.CentralFeed.APIToken = v
+	}
 }
 
 func (c *Config) SetDefaults() {

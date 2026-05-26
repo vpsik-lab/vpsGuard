@@ -27,12 +27,17 @@ See [`docs/AGENT-API-CONTRACT.md`](docs/AGENT-API-CONTRACT.md) for the interface
 - **SHA256 verification** — install.sh verifies binary checksums before install
 - **Works offline** — Fully functional without internet
 - **Telegram + Email alerts** — Rich HTML notifications
+- **Tamper alerts** — Watchdog fires immediate Telegram/Email on config checksum mismatch
 - **Daily reports** — Optional Telegram report every 24h with security summary
 - **Log integrity** — Hash chain for audit log tamper detection
 - **Self-protecting** — Watchdog, systemd sandbox, config integrity, AppArmor profile
 - **One-command deploy** — Under 30 seconds
 - **Full uninstall** — `bash install.sh --uninstall` undoes everything
 - **VPS hardening** — Optional `deploy/harden.sh` (SSH, UFW, BBR, sysctl, auditd, AppArmor, Docker, auto-updates, process accounting)
+- **Persistent cache** — SQLite IP reputation cache survives service restarts
+- **CLI management** — `--list-blocked`, `--unblock <IP>`, `--status` commands
+- **Metrics endpoint** — `/metrics` in Prometheus text format + JSON (`?format=json`)
+- **Secrets via env vars** — API keys and passwords via `VPSGUARD_*` env vars (no plain-text in config)
 
 ---
 
@@ -81,9 +86,19 @@ go build -ldflags="-s -w" -o vpsGuard ./cmd/vpsGuard/
 # 2. Configure
 cp config.yaml /etc/vpsGuard/config.yaml
 # Edit: set API keys, notification tokens, etc.
+# TIP: use env vars for secrets instead of plain-text
+# export VPSGUARD_ABUSEIPDB_KEY=your-key
+# export VPSGUARD_TELEGRAM_TOKEN=your-token
 
 # 3. Run
 sudo ./vpsGuard -config /etc/vpsGuard/config.yaml
+
+# 4. CLI management (while agent is running)
+sudo ./vpsGuard --list-blocked           # view all blocked IPs
+sudo ./vpsGuard --unblock 1.2.3.4       # unblock an IP
+./vpsGuard --status                      # check agent health
+curl http://127.0.0.1:9090/metrics      # Prometheus metrics
+curl http://127.0.0.1:9090/metrics?format=json  # JSON metrics
 ```
 
 Or use the install script:
@@ -119,7 +134,7 @@ See [`docs/AGENT-DEPLOYMENT.md`](docs/AGENT-DEPLOYMENT.md) for full installation
 
 | Metric | Status |
 |--------|--------|
-| **Tests** | 136 test functions across 19 files — all 11 packages pass |
+| **Tests** | 146 test functions across 20 files — all 12 packages pass |
 | **Race detection** | `go test -race ./...` ✅ (CI enforces) |
 | **Static analysis** | `go vet ./...` ✅ |
 | **Build** | `go build ./...` ✅ amd64 / arm64 / arm |

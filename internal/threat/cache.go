@@ -46,12 +46,57 @@ func NewIPCache(dbPath string, ttl time.Duration, logger *zap.Logger) (*IPCache,
 		return nil, err
 	}
 
-	return &IPCache{
+	c := &IPCache{
 		db:      db,
 		ttl:     ttl,
 		entries: make(map[string]*CacheEntry),
 		logger:  logger,
-	}, nil
+	}
+	c.loadFromDB() // restore non-expired entries on startup
+	return c, nil
+}
+
+// loadFromDB restores all non-expired cache entries from SQLite into the in-memory map.
+// This ensures the cache survives service restarts — fixing the write-only cache bug.
+func (c *IPCache) loadFromDB() {
+	rows, err := c.db.Query(`
+		SELECT ip, abuse_score, otx_score, central_score, central_conf,
+		       last_checked, ttl_hours
+		FROM   ip_cache
+		WHERE  datetime(last_checked, '+' || ttl_hours || ' hours') > datetime('now')
+	`)
+	if err != nil {
+		if c.logger != nil {
+			c.logger.Warn("cache: failed to load from disk", zap.Error(err))
+		}
+		return
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var e CacheEntry
+		var lastCheckedStr string
+		var ttlHours int
+		if err := rows.Scan(&e.IP, &e.AbuseScore, &e.OTXScore,
+			&e.CentralScore, &e.CentralConf, &lastCheckedStr, &ttlHours); err != nil {
+			continue
+		}
+		// go-sqlite3 stores time as RFC3339; fall back to SQLite default format
+		if t, err2 := time.Parse(time.RFC3339, lastCheckedStr); err2 == nil {
+			e.LastChecked = t
+		} else if t, err2 := time.Parse("2006-01-02 15:04:05", lastCheckedStr); err2 == nil {
+			e.LastChecked = t
+		} else {
+			e.LastChecked = time.Now()
+		}
+		e.TTL = time.Duration(ttlHours) * time.Hour
+		c.entries[e.IP] = &e
+		count++
+	}
+	if c.logger != nil && count > 0 {
+		c.logger.Info("cache: restored from disk", zap.Int("entries", count))
+	}
 }
 
 func (c *IPCache) Get(ip string) *CacheEntry {

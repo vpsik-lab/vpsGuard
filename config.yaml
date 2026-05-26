@@ -16,8 +16,8 @@ monitor:
   interval_seconds: 5
 
 threat:
-  abuseipdb_key: ""
-  alienvault_key: ""
+  abuseipdb_key: ""    # or env: VPSGUARD_ABUSEIPDB_KEY
+  alienvault_key: ""   # or env: VPSGUARD_ALIENVAULT_KEY
   cache_ttl_hours: 24
   rate_limit_per_min: 10
 
@@ -48,12 +48,12 @@ firewall:
     - ::1
 
 notify:
-  telegram_token: ""
-  telegram_chat_id: ""
+  telegram_token: ""    # or env: VPSGUARD_TELEGRAM_TOKEN
+  telegram_chat_id: "" # or env: VPSGUARD_TELEGRAM_CHAT_ID
   smtp_host: ""
   smtp_port: 587
   smtp_user: ""
-  smtp_pass: ""
+  smtp_pass: ""         # or env: VPSGUARD_SMTP_PASS
   email_from: ""
   email_to: ""
   cooldown_minutes: 10
@@ -72,6 +72,6 @@ daily_report:
 central_feed:
   enabled: false
   api_url: "https://your-platform.com/api/v1/threat-feed"
-  api_token: ""
+  api_token: ""         # or env: VPSGUARD_CENTRAL_TOKEN
   sync_interval_seconds: 60
   min_confidence: 50

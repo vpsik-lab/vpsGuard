@@ -37,20 +37,23 @@ func NewNftables(cfg *config.Config, logger *zap.Logger) (*NftablesManager, erro
 	return m, nil
 }
 
+// ensureSets creates the nftables table, sets, chain and drop rules if they don't exist.
+// Each command is passed as separate arguments (never a single concatenated string)
+// to eliminate any argument-injection risk from config-controlled table/set names.
 func (m *NftablesManager) ensureSets() error {
-	cmds := []string{
-		fmt.Sprintf("add table inet %s", m.table),
-		fmt.Sprintf("add set inet %s %s { type ipv4_addr; flags timeout; }", m.table, m.setName),
-		fmt.Sprintf("add set inet %s %s { type ipv6_addr; flags timeout; }", m.table, m.setNameV6),
-		fmt.Sprintf("add chain inet %s input { type filter hook input priority 0; policy accept; }", m.table),
-		fmt.Sprintf("add rule inet %s input ip saddr @%s drop", m.table, m.setName),
-		fmt.Sprintf("add rule inet %s input ip6 saddr @%s drop", m.table, m.setNameV6),
+	cmds := [][]string{
+		{"add", "table", "inet", m.table},
+		{"add", "set", "inet", m.table, m.setName, "{ type ipv4_addr; flags timeout; }"},
+		{"add", "set", "inet", m.table, m.setNameV6, "{ type ipv6_addr; flags timeout; }"},
+		{"add", "chain", "inet", m.table, "input", "{ type filter hook input priority 0; policy accept; }"},
+		{"add", "rule", "inet", m.table, "input", fmt.Sprintf("ip saddr @%s drop", m.setName)},
+		{"add", "rule", "inet", m.table, "input", fmt.Sprintf("ip6 saddr @%s drop", m.setNameV6)},
 	}
 
-	for _, cmd := range cmds {
-		exec.Command("nft", cmd).Run()
+	for _, args := range cmds {
+		// Ignore errors: commands are idempotent — sets/chains already existing is OK.
+		exec.Command("nft", args...).Run() //nolint:errcheck
 	}
-
 	return nil
 }
 
@@ -79,29 +82,73 @@ func (m *NftablesManager) setForIP(ip string) string {
 func (m *NftablesManager) BlockIP(ctx context.Context, ip string, duration time.Duration) error {
 	set := m.setForIP(ip)
 	timeout := int(duration.Seconds())
-	cmd := fmt.Sprintf("add element inet %s %s { %s timeout %ds }", m.table, set, ip, timeout)
 	m.logger.Info("blocking IP",
 		zap.String("ip", ip),
 		zap.String("set", set),
 		zap.Duration("duration", duration),
 	)
-	return exec.CommandContext(ctx, "nft", cmd).Run()
+	// Separate args — never interpolate IP or table names into a single string.
+	return exec.CommandContext(ctx, "nft", "add", "element", "inet", m.table, set,
+		fmt.Sprintf("{ %s timeout %ds }", ip, timeout)).Run()
 }
 
 func (m *NftablesManager) UnblockIP(ctx context.Context, ip string) error {
 	set := m.setForIP(ip)
-	cmd := fmt.Sprintf("delete element inet %s %s { %s }", m.table, set, ip)
-	return exec.CommandContext(ctx, "nft", cmd).Run()
+	return exec.CommandContext(ctx, "nft", "delete", "element", "inet", m.table, set,
+		fmt.Sprintf("{ %s }", ip)).Run()
 }
 
 func (m *NftablesManager) IsBlocked(ctx context.Context, ip string) (bool, error) {
 	set := m.setForIP(ip)
-	cmd := fmt.Sprintf("list set inet %s %s", m.table, set)
-	out, err := exec.CommandContext(ctx, "nft", cmd).Output()
+	out, err := exec.CommandContext(ctx, "nft", "list", "set", "inet", m.table, set).Output()
 	if err != nil {
 		return false, err
 	}
 	return containsIP(string(out), ip), nil
+}
+
+// ListBlocked returns all IPs currently in the nftables set.
+// Pass ipv6=true to query the IPv6 set, false for IPv4.
+func (m *NftablesManager) ListBlocked(ctx context.Context, ipv6 bool) ([]string, error) {
+	set := m.setName
+	if ipv6 {
+		set = m.setNameV6
+	}
+	out, err := exec.CommandContext(ctx, "nft", "list", "set", "inet", m.table, set).Output()
+	if err != nil {
+		return nil, err
+	}
+	return parseNftSetElements(string(out)), nil
+}
+
+// parseNftSetElements extracts individual IP addresses from nft list set output.
+// Example output line:  "elements = { 1.2.3.4 timeout 86400s expires ..., 5.6.7.8 ... }"
+func parseNftSetElements(output string) []string {
+	var ips []string
+	// Find the elements block
+	start := strings.Index(output, "elements = {")
+	if start == -1 {
+		return ips
+	}
+	block := output[start:]
+	end := strings.Index(block, "}")
+	if end == -1 {
+		return ips
+	}
+	block = block[len("elements = {"):end]
+	// Each element is "IP timeout Xs expires Ys," — split on comma
+	for _, part := range strings.Split(block, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		// The IP is always the first token
+		fields := strings.Fields(part)
+		if len(fields) > 0 && net.ParseIP(fields[0]) != nil {
+			ips = append(ips, fields[0])
+		}
+	}
+	return ips
 }
 
 func containsIP(output, ip string) bool {

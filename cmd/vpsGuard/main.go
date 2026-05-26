@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -18,7 +20,6 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/vpsik-lab/vpsGuard/internal/api"
-	"github.com/vpsik-lab/vpsGuard/internal/bootstrap"
 	"github.com/vpsik-lab/vpsGuard/internal/config"
 	"github.com/vpsik-lab/vpsGuard/internal/engine"
 	"github.com/vpsik-lab/vpsGuard/internal/firewall"
@@ -38,11 +39,14 @@ var (
 )
 
 func main() {
-	configPath := flag.String("config", "/etc/vpsGuard/config.yaml", "path to config file")
+	configPath  := flag.String("config", "/etc/vpsGuard/config.yaml", "path to config file")
 	showVersion := flag.Bool("version", false, "show version and exit")
 	genChecksum := flag.Bool("gen-checksum", false, "compute and print SHA256 of config file")
 	hashChainDir := flag.String("hash-chain", "", "append hash chain entry for logs in directory")
-	healthAddr := flag.String("health-addr", "127.0.0.1:9090", "health endpoint listen address")
+	healthAddr  := flag.String("health-addr", "127.0.0.1:9090", "health endpoint listen address")
+	listBlocked := flag.Bool("list-blocked", false, "list currently blocked IPs")
+	unblockIP   := flag.String("unblock", "", "immediately unblock an IP address")
+	showStatus  := flag.Bool("status", false, "show agent health status (requires agent to be running)")
 	flag.Parse()
 
 	if *hashChainDir != "" {
@@ -77,6 +81,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	// ── CLI utility commands (no daemon needed) ──────────────────────────
+	if *listBlocked {
+		runListBlocked(cfg)
+		return
+	}
+	if *unblockIP != "" {
+		runUnblockIP(cfg, *unblockIP)
+		return
+	}
+	if *showStatus {
+		runStatus(*healthAddr)
+		return
+	}
+
 	os.MkdirAll(cfg.LogDir, 0750)
 	os.MkdirAll(cfg.CacheDir, 0750)
 
@@ -93,10 +111,10 @@ func main() {
 		zap.String("config_path", *configPath),
 	)
 
-	if cfg.Bootstrap.Enabled {
-		logger.Info("running system hardening")
-		bootstrap.RunHardening(cfg, logger)
-	}
+	// NOTE: bootstrap hardening is intentionally NOT run here.
+	// The daemon runs as user 'vpsGuard' with only CAP_NET_ADMIN+CAP_SYSLOG;
+	// apt-get / sshd_config edits require full root and belong in
+	// deploy/install.sh and deploy/harden.sh (run once at install time).
 
 	bus := pipeline.NewBus(logger)
 	intelClient := threat.NewIntelClient(cfg, logger)
@@ -137,9 +155,16 @@ func main() {
 	rulesEngine.LoadDefaults()
 	pullClient := api.NewPullClient(cfg, logger, intelClient)
 	watchdog := selfprotect.NewWatchdog(logger, *configPath, time.Duration(cfg.SelfProtect.WatchdogInterval)*time.Second, cfg.SelfProtect.ConfigChecksum)
+	// Wire tamper callback: fire an immediate alert via all configured channels
+	watchdog.OnTamper(func(msg string) {
+		logger.Error("TAMPER ALERT — sending emergency notification", zap.String("detail", msg))
+		notifier.SendRaw(context.Background(), "\u26a0\ufe0f *vpsGuard TAMPER ALERT*\n"+msg)
+	})
 	journalMon := monitor.NewJournalMonitor(cfg, logger, bus)
 
+	agentMetrics := api.NewAgentMetrics()
 	healthSrv := api.NewHealthServer(logger, version)
+	healthSrv.RegisterMetrics(agentMetrics)
 	healthSrv.RegisterComponent("watchdog", func(ctx context.Context) api.ComponentStatus {
 		uptime := watchdog.Uptime()
 		if uptime > 2*time.Duration(cfg.SelfProtect.WatchdogInterval)*time.Second {
@@ -196,7 +221,7 @@ func main() {
 		for {
 			select {
 			case evt := <-eventCh:
-				processEvent(ctx, cfg, logger, scorer, decision, notifier, reporter, rulesEngine, intelClient, fw, blockStore, auditLog, evt)
+				processEvent(ctx, cfg, logger, scorer, decision, notifier, reporter, rulesEngine, intelClient, fw, blockStore, auditLog, agentMetrics, evt)
 			case <-ctx.Done():
 				return
 			}
@@ -222,6 +247,7 @@ func processEvent(
 	fw *firewall.NftablesManager,
 	blockStore *firewall.BlockStore,
 	auditLog *engine.AuditLogger,
+	metrics *api.AgentMetrics,
 	evt pipeline.Envelope,
 ) {
 	logger.Debug("processing event",
@@ -231,6 +257,7 @@ func processEvent(
 	)
 
 	reporter.IncrementEventCount()
+	metrics.EventsTotal.Add(1)
 
 	scorer.RecordEvent(evt)
 	scores := scorer.Evaluate(ctx, evt, intelClient)
@@ -246,9 +273,19 @@ func processEvent(
 			}
 			blockStore.Save(evt.SourceIP(), time.Now().Add(action.Duration), action.Reason)
 			intelClient.ReportIP(ctx, evt.SourceIP())
+			metrics.BlocksTotal.Add(1)
 		}
 		if action.Notify {
 			notifier.Send(ctx, evt, scores, action)
+		}
+		// Update action-type counters
+		switch action.Type {
+		case "quarantine":
+			metrics.QuarantTotal.Add(1)
+		case "rate_limit":
+			metrics.RateLimTotal.Add(1)
+		case "monitor":
+			metrics.MonitorTotal.Add(1)
 		}
 	}
 
@@ -278,6 +315,130 @@ func firstBlockAction(actions []engine.Action) *engine.Action {
 		return &actions[0]
 	}
 	return nil
+}
+
+// ── CLI utility helpers ───────────────────────────────────────────────────────
+
+// runListBlocked prints all currently blocked IPs.
+// It merges two sources:
+//  1. blocks.json (the persistent block store written by the daemon)
+//  2. nftables live set (captures IPs blocked outside the store, e.g. after
+//     blocks.json was manually deleted or by a direct nft command)
+func runListBlocked(cfg *config.Config) {
+	// ── Source 1: block store ────────────────────────────────────────────
+	type row struct {
+		ip      string
+		expires string
+		reason  string
+	}
+	seen := make(map[string]struct{})
+	var rows []row
+
+	store := firewall.NewBlockStore(filepath.Join(cfg.CacheDir, "blocks.json"))
+	if entries, err := store.Load(); err == nil {
+		for _, e := range entries {
+			remaining := time.Until(e.ExpiresAt).Round(time.Second)
+			expiry := e.ExpiresAt.Format(time.RFC3339)
+			if remaining <= 0 {
+				expiry += " (expired)"
+			} else {
+				expiry += fmt.Sprintf(" (in %s)", remaining)
+			}
+			rows = append(rows, row{e.IP, expiry, e.Reason})
+			seen[e.IP] = struct{}{}
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "warn: could not read block store: %v\n", err)
+	}
+
+	// ── Source 2: live nftables set ──────────────────────────────────────
+	fw, fwErr := firewall.NewNftables(cfg, zap.NewNop())
+	if fwErr == nil {
+		ctx := context.Background()
+		// IPv4 set
+		if ips, err := fw.ListBlocked(ctx, false); err == nil {
+			for _, ip := range ips {
+				if _, exists := seen[ip]; !exists {
+					rows = append(rows, row{ip, "(nftables only — no store entry)", ""})
+					seen[ip] = struct{}{}
+				}
+			}
+		}
+		// IPv6 set
+		if ips, err := fw.ListBlocked(ctx, true); err == nil {
+			for _, ip := range ips {
+				if _, exists := seen[ip]; !exists {
+					rows = append(rows, row{ip, "(nftables only — no store entry)", ""})
+					seen[ip] = struct{}{}
+				}
+			}
+		}
+	}
+
+	if len(rows) == 0 {
+		fmt.Println("No IPs currently blocked.")
+		return
+	}
+	fmt.Printf("%-20s  %-42s  %s\n", "IP", "EXPIRES", "REASON")
+	fmt.Println(strings.Repeat("-", 82))
+	for _, r := range rows {
+		fmt.Printf("%-20s  %-42s  %s\n", r.ip, r.expires, r.reason)
+	}
+	if fwErr != nil {
+		fmt.Fprintf(os.Stderr, "\nnote: nftables unavailable (%v) — showing block store only\n", fwErr)
+	}
+}
+
+// runUnblockIP removes an IP from the block store and from nftables if available.
+func runUnblockIP(cfg *config.Config, ip string) {
+	// 1. Remove from persistent block store.
+	store := firewall.NewBlockStore(filepath.Join(cfg.CacheDir, "blocks.json"))
+	if err := store.Remove(ip); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: block store removal: %v\n", err)
+	} else {
+		fmt.Printf("✅ %s removed from block store\n", ip)
+	}
+
+	// 2. Best-effort nftables removal (requires CAP_NET_ADMIN / root).
+	// Use zap.NewNop() — never pass nil to avoid a potential nil-dereference
+	// inside nftables.go if nft returns an unexpected error.
+	fw, err := firewall.NewNftables(cfg, zap.NewNop())
+	if err != nil {
+		fmt.Println("note: nftables unavailable — block store entry removed only.")
+		return
+	}
+	ctx := context.Background()
+	if err2 := fw.UnblockIP(ctx, ip); err2 != nil {
+		fmt.Fprintf(os.Stderr, "warn: nftables unblock failed (may need root): %v\n", err2)
+	} else {
+		fmt.Printf("✅ %s unblocked from nftables\n", ip)
+	}
+}
+
+// runStatus queries the running agent's /health endpoint and prints a summary.
+func runStatus(healthAddr string) {
+	url := "http://" + healthAddr + "/health"
+	resp, err := (&http.Client{Timeout: 3 * time.Second}).Get(url)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cannot reach agent at %s: %v\n", url, err)
+		fmt.Println("Is the agent running?  →  systemctl status vpsGuard")
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+	var body map[string]interface{}
+	if err2 := json.NewDecoder(resp.Body).Decode(&body); err2 != nil {
+		fmt.Fprintf(os.Stderr, "invalid response: %v\n", err2)
+		os.Exit(1)
+	}
+	fmt.Printf("Status:  %v\n", body["status"])
+	fmt.Printf("Version: %v\n", body["version"])
+	fmt.Printf("Uptime:  %v\n", body["uptime"])
+	if comps, ok := body["components"].(map[string]interface{}); ok {
+		fmt.Println("\nComponents:")
+		for name, val := range comps {
+			fmt.Printf("  %-20s %v\n", name, val)
+		}
+	}
 }
 
 func newLogger(logDir string) (*zap.Logger, error) {

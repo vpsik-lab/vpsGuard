@@ -83,6 +83,23 @@ func (n *Notifier) SendReport(ctx context.Context, text string, useTelegram bool
 	}
 }
 
+// SendRaw sends a raw Markdown/HTML message to all configured channels
+// immediately, bypassing the per-IP cooldown. Use only for high-priority
+// security alerts such as tamper detection.
+func (n *Notifier) SendRaw(ctx context.Context, message string) {
+	if n.telegram != nil {
+		if err := n.telegram.Send(ctx, message); err != nil {
+			n.logger.Error("telegram raw send failed", zap.Error(err))
+		}
+	}
+	if n.email != nil {
+		if err := n.email.Send(ctx, "vpsGuard Security Alert", message); err != nil {
+			n.logger.Error("email raw send failed", zap.Error(err))
+		}
+	}
+}
+
+
 func (n *Notifier) onCooldown(ip string) bool {
 	if n.cooldown <= 0 {
 		return false

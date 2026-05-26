@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -12,13 +13,14 @@ import (
 )
 
 type Watchdog struct {
-	logger            *zap.Logger
-	lastHealth        time.Time
-	configPath        string
-	interval          time.Duration
-	tickCount         int64
-	expectedChecksum  string
-	tamperWarnings    int
+	logger           *zap.Logger
+	lastHealth       time.Time
+	configPath       string
+	interval         time.Duration
+	tickCount        int64
+	expectedChecksum string
+	tamperWarnings   int
+	onTamperFn       func(message string) // called immediately on tamper detection
 }
 
 func NewWatchdog(logger *zap.Logger, configPath string, interval time.Duration, expectedChecksum string) *Watchdog {
@@ -29,6 +31,13 @@ func NewWatchdog(logger *zap.Logger, configPath string, interval time.Duration, 
 		interval:         interval,
 		expectedChecksum: expectedChecksum,
 	}
+}
+
+// OnTamper registers a callback invoked immediately when a config-file tamper is detected.
+// Use this to wire Telegram/Email alerts from outside the selfprotect package.
+// The callback receives a human-readable description of the tamper event.
+func (w *Watchdog) OnTamper(fn func(message string)) {
+	w.onTamperFn = fn
 }
 
 func (w *Watchdog) Run(ctx context.Context) {
@@ -82,12 +91,21 @@ func (w *Watchdog) healthCheck() {
 		got := hex.EncodeToString(h.Sum(nil))
 		if got != w.expectedChecksum {
 			w.tamperWarnings++
+			msg := fmt.Sprintf(
+				"config checksum mismatch on %s (warning #%d) — expected ...%s got ...%s",
+				w.configPath, w.tamperWarnings,
+				w.expectedChecksum[max(0, len(w.expectedChecksum)-8):],
+				got[max(0, len(got)-8):],
+			)
 			w.logger.Error("config file checksum mismatch - possible tamper",
 				zap.String("path", w.configPath),
 				zap.String("expected", w.expectedChecksum),
 				zap.String("got", got),
 				zap.Int("consecutive_warnings", w.tamperWarnings),
 			)
+			if w.onTamperFn != nil {
+				w.onTamperFn(msg)
+			}
 			w.lastHealth = time.Now()
 			return
 		}
