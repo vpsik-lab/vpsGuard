@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vps-guard/vps-guard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
 )
 
 type ParsedEvent struct {

@@ -3,23 +3,32 @@ package notify
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
 
-	"github.com/vps-guard/vps-guard/internal/config"
-	"github.com/vps-guard/vps-guard/internal/engine"
-	"github.com/vps-guard/vps-guard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/engine"
+	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
 )
 
 type Notifier struct {
 	telegram *TelegramNotifier
 	email    *EmailNotifier
 	logger   *zap.Logger
+
+	cooldown     time.Duration
+	cooldownMu   sync.Mutex
+	cooldownSent map[string]time.Time
 }
 
 func NewNotifier(cfg *config.Config, logger *zap.Logger) *Notifier {
-	n := &Notifier{logger: logger}
+	n := &Notifier{
+		logger:       logger,
+		cooldown:     time.Duration(cfg.Notify.CooldownMinutes) * time.Minute,
+		cooldownSent: make(map[string]time.Time),
+	}
 
 	if cfg.Notify.TelegramToken != "" && cfg.Notify.TelegramChatID != "" {
 		n.telegram = NewTelegramNotifier(cfg.Notify.TelegramToken, cfg.Notify.TelegramChatID, logger)
@@ -37,6 +46,13 @@ func NewNotifier(cfg *config.Config, logger *zap.Logger) *Notifier {
 }
 
 func (n *Notifier) Send(ctx context.Context, evt pipeline.Envelope, scores *engine.ScoreResult, action engine.Action) {
+	ip := evt.SourceIP()
+
+	if n.onCooldown(ip) {
+		n.logger.Debug("notification skipped (cooldown)", zap.String("ip", ip))
+		return
+	}
+
 	msg := formatAlert(evt, scores, action)
 
 	if n.telegram != nil {
@@ -50,6 +66,30 @@ func (n *Notifier) Send(ctx context.Context, evt pipeline.Envelope, scores *engi
 			n.logger.Error("email send failed", zap.Error(err))
 		}
 	}
+
+	n.markSent(ip)
+}
+
+func (n *Notifier) onCooldown(ip string) bool {
+	if n.cooldown <= 0 {
+		return false
+	}
+	n.cooldownMu.Lock()
+	defer n.cooldownMu.Unlock()
+	last, ok := n.cooldownSent[ip]
+	if !ok {
+		return false
+	}
+	return time.Since(last) < n.cooldown
+}
+
+func (n *Notifier) markSent(ip string) {
+	if n.cooldown <= 0 {
+		return
+	}
+	n.cooldownMu.Lock()
+	defer n.cooldownMu.Unlock()
+	n.cooldownSent[ip] = time.Now()
 }
 
 func formatAlert(evt pipeline.Envelope, scores *engine.ScoreResult, action engine.Action) string {

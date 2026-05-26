@@ -38,7 +38,7 @@ func TestValidate(t *testing.T) {
 				Monitor: MonitorConfig{Interval: 5, LogPaths: []string{"/var/log/auth.log"}},
 				Threat:  ThreatConfig{CacheTTL: 24, RateLimit: 10},
 				Scoring: ScoringConfig{
-					BlockThreshold: 60, QuarantineScore: 30, QuarantineMin: 15,
+					BlockThreshold: 60, RateLimitScore: 40, QuarantineScore: 30, QuarantineMin: 15,
 					AbuseIPDBWeight: 0.25, AlienVaultWeight: 0.20,
 					BehaviorWeight: 0.30, TemporalWeight: 0.10, CentralWeight: 0.15,
 					CentralBlockThreshold: 80, CentralQuarThreshold: 50,

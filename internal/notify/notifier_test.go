@@ -8,9 +8,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vps-guard/vps-guard/internal/config"
-	"github.com/vps-guard/vps-guard/internal/engine"
-	"github.com/vps-guard/vps-guard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/engine"
+	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
 )
 
 func TestNewNotifierEmpty(t *testing.T) {
@@ -167,4 +167,65 @@ func TestSendWithNoNotifiers(t *testing.T) {
 	action := engine.Action{Type: "block", Score: 50, Reason: "test"}
 
 	n.Send(context.Background(), evt, scores, action)
+}
+
+func TestCooldownBlocksDuplicate(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.SetDefaults()
+	cfg.Notify.CooldownMinutes = 10
+	logger := zap.NewNop()
+
+	n := NewNotifier(cfg, logger)
+
+	if n.onCooldown("1.2.3.4") {
+		t.Error("IP should not be on cooldown before first send")
+	}
+
+	n.markSent("1.2.3.4")
+
+	if !n.onCooldown("1.2.3.4") {
+		t.Error("IP should be on cooldown after send")
+	}
+}
+
+func TestCooldownDifferentIPs(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.SetDefaults()
+	cfg.Notify.CooldownMinutes = 10
+	logger := zap.NewNop()
+
+	n := NewNotifier(cfg, logger)
+
+	n.markSent("1.1.1.1")
+
+	if n.onCooldown("2.2.2.2") {
+		t.Error("different IP should not be on cooldown")
+	}
+}
+
+func TestCooldownExpires(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.SetDefaults()
+	cfg.Notify.CooldownMinutes = 0
+	logger := zap.NewNop()
+
+	n := NewNotifier(cfg, logger)
+
+	n.markSent("1.2.3.4")
+
+	if n.onCooldown("1.2.3.4") {
+		t.Error("cooldown should be disabled when CooldownMinutes = 0")
+	}
+}
+
+func TestNewNotifierCooldownConfig(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.SetDefaults()
+	cfg.Notify.CooldownMinutes = 30
+	logger := zap.NewNop()
+
+	n := NewNotifier(cfg, logger)
+	if n.cooldown != 30*time.Minute {
+		t.Errorf("expected 30m cooldown, got %v", n.cooldown)
+	}
 }

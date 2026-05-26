@@ -124,12 +124,11 @@ Scoring formula: see [`AGENT-SCORING.md`](AGENT-SCORING.md).
 
 ### 2.7 Rules Engine (`internal/rules/`)
 
-- YAML-defined rules, 4 defaults built-in:
+- YAML-defined rules, 3 defaults built-in:
   - `aggressive_ssh`: block on >10 attempts/5min
   - `port_scan`: block on >20 unique ports/5min
   - `invalid_user`: block on non-existent usernames
-  - `central_feed_critical`: block on confidence ≥90
-- Custom rules loaded from `/etc/vps-guard/rules.yaml`
+- Custom rules loaded from `/etc/vps-guard/rules.yaml` (replaces defaults)
 
 ### 2.8 Firewall (`internal/firewall/`)
 
@@ -154,14 +153,14 @@ Scoring formula: see [`AGENT-SCORING.md`](AGENT-SCORING.md).
 - Configurable interval (default: 60s)
 - Min confidence filter
 - Merges into IntelClient's SQLite cache
-- Exponential backoff on errors
+- Periodic pull on configurable interval (default: 60s)
 
 ### 2.11 Self-Protect (`internal/selfprotect/`)
 
 | Feature | Implementation |
 |---------|---------------|
 | Health check | Periodic watch, systemd auto-restart |
-| Config integrity | SHA256 hash comparison on startup |
+| Config integrity | Periodic stat check (SHA256 planned) |
 | Systemd sandbox | NoNewPrivileges, ProtectSystem, PrivateTmp |
 
 ### 2.12 Bootstrap (`internal/bootstrap/`)

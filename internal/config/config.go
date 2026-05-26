@@ -48,10 +48,15 @@ type ScoringConfig struct {
 	TemporalWeight   float64 `yaml:"temporal_weight"`
 	CentralWeight    float64 `yaml:"central_weight"`
 	BlockThreshold   int     `yaml:"block_threshold"`
+	RateLimitScore   int     `yaml:"rate_limit_score"`
+	RateLimitMin     int     `yaml:"rate_limit_minutes"`
 	QuarantineScore  int     `yaml:"quarantine_score"`
 	QuarantineMin    int     `yaml:"quarantine_minutes"`
 	CentralBlockThreshold int `yaml:"central_block_threshold"`
 	CentralQuarThreshold  int `yaml:"central_quarantine_threshold"`
+	BehaviorWindowMinutes int `yaml:"behavior_window_minutes"`
+	BehaviorThreshold     int `yaml:"behavior_threshold"`
+	TemporalTTLHours      int `yaml:"temporal_ttl_hours"`
 }
 
 type FirewallConfig struct {
@@ -61,19 +66,21 @@ type FirewallConfig struct {
 }
 
 type NotifyConfig struct {
-	TelegramToken  string `yaml:"telegram_token"`
-	TelegramChatID string `yaml:"telegram_chat_id"`
-	SMTPHost       string `yaml:"smtp_host"`
-	SMTPPort       int    `yaml:"smtp_port"`
-	SMTPUser       string `yaml:"smtp_user"`
-	SMTPPass       string `yaml:"smtp_pass"`
-	EmailFrom      string `yaml:"email_from"`
-	EmailTo        string `yaml:"email_to"`
+	TelegramToken    string `yaml:"telegram_token"`
+	TelegramChatID   string `yaml:"telegram_chat_id"`
+	SMTPHost         string `yaml:"smtp_host"`
+	SMTPPort         int    `yaml:"smtp_port"`
+	SMTPUser         string `yaml:"smtp_user"`
+	SMTPPass         string `yaml:"smtp_pass"`
+	EmailFrom        string `yaml:"email_from"`
+	EmailTo          string `yaml:"email_to"`
+	CooldownMinutes  int    `yaml:"cooldown_minutes"`
 }
 
 type SelfProtectConfig struct {
-	WatchdogInterval int  `yaml:"watchdog_interval_seconds"`
-	EnableFileCheck  bool `yaml:"enable_file_check"`
+	WatchdogInterval int    `yaml:"watchdog_interval_seconds"`
+	EnableFileCheck  bool   `yaml:"enable_file_check"`
+	ConfigChecksum   string `yaml:"config_checksum"`
 }
 
 type CentralFeedConfig struct {
@@ -128,6 +135,21 @@ func (c *Config) SetDefaults() {
 	if c.Scoring.BlockThreshold <= 0 {
 		c.Scoring.BlockThreshold = 60
 	}
+	if c.Scoring.BehaviorWindowMinutes <= 0 {
+		c.Scoring.BehaviorWindowMinutes = 10
+	}
+	if c.Scoring.BehaviorThreshold <= 0 {
+		c.Scoring.BehaviorThreshold = 5
+	}
+	if c.Scoring.TemporalTTLHours <= 0 {
+		c.Scoring.TemporalTTLHours = 168
+	}
+	if c.Scoring.RateLimitScore <= 0 {
+		c.Scoring.RateLimitScore = 40
+	}
+	if c.Scoring.RateLimitMin <= 0 {
+		c.Scoring.RateLimitMin = 5
+	}
 	if c.Scoring.QuarantineScore <= 0 {
 		c.Scoring.QuarantineScore = 30
 	}
@@ -167,6 +189,9 @@ func (c *Config) SetDefaults() {
 	if c.Notify.SMTPPort <= 0 {
 		c.Notify.SMTPPort = 587
 	}
+	if c.Notify.CooldownMinutes <= 0 {
+		c.Notify.CooldownMinutes = 10
+	}
 	if c.SelfProtect.WatchdogInterval <= 0 {
 		c.SelfProtect.WatchdogInterval = 30
 	}
@@ -201,6 +226,12 @@ func (c *Config) Validate() error {
 	}
 	if c.Firewall.DefaultBlockDuration < 1 {
 		return fmt.Errorf("firewall.default_block_hours must be >= 1, got %d", c.Firewall.DefaultBlockDuration)
+	}
+	if c.Scoring.BlockThreshold <= c.Scoring.RateLimitScore {
+		return fmt.Errorf("block_threshold (%d) must be > rate_limit_score (%d)", c.Scoring.BlockThreshold, c.Scoring.RateLimitScore)
+	}
+	if c.Scoring.RateLimitScore <= c.Scoring.QuarantineScore {
+		return fmt.Errorf("rate_limit_score (%d) must be > quarantine_score (%d)", c.Scoring.RateLimitScore, c.Scoring.QuarantineScore)
 	}
 	return nil
 }

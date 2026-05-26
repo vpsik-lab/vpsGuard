@@ -6,10 +6,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vps-guard/vps-guard/internal/config"
-	"github.com/vps-guard/vps-guard/internal/firewall"
-	"github.com/vps-guard/vps-guard/internal/pipeline"
-	"github.com/vps-guard/vps-guard/internal/rules"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/rules"
 )
 
 func TestDecisionEvaluateBlock(t *testing.T) {
@@ -17,12 +16,7 @@ func TestDecisionEvaluateBlock(t *testing.T) {
 	cfg.SetDefaults()
 	logger := zap.NewNop()
 
-	fw, err := firewall.NewNftables(cfg, logger)
-	if err != nil {
-		t.Skip("nftables not available:", err)
-	}
-
-	dec := NewDecision(cfg, fw, logger)
+	dec := NewDecision(cfg, nil, logger)
 	ruleEng := rules.NewEngine(cfg, logger)
 	ruleEng.LoadDefaults()
 
@@ -59,12 +53,7 @@ func TestDecisionEvaluateMonitor(t *testing.T) {
 	cfg.SetDefaults()
 	logger := zap.NewNop()
 
-	fw, err := firewall.NewNftables(cfg, logger)
-	if err != nil {
-		t.Skip("nftables not available:", err)
-	}
-
-	dec := NewDecision(cfg, fw, logger)
+	dec := NewDecision(cfg, nil, logger)
 	ruleEng := rules.NewEngine(cfg, logger)
 	ruleEng.LoadDefaults()
 
@@ -87,17 +76,82 @@ func TestDecisionEvaluateMonitor(t *testing.T) {
 	}
 }
 
+func TestDecisionEvaluateRateLimit(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.SetDefaults()
+	logger := zap.NewNop()
+
+	dec := NewDecision(cfg, nil, logger)
+	ruleEng := rules.NewEngine(cfg, logger)
+	ruleEng.LoadDefaults()
+
+	evt := pipeline.Envelope{
+		Event: pipeline.BaseEvent{IP: "1.2.3.4"},
+	}
+
+	// rate_limit_score = 40, block_threshold = 60 → score 50 hits rate limit
+	scores := &ScoreResult{
+		IP: "1.2.3.4", FinalScore: 50,
+		Behavioral: 50, Sources: []string{"behavioral"},
+	}
+
+	actions := dec.Evaluate(context.Background(), evt, scores, ruleEng)
+	if len(actions) == 0 {
+		t.Fatal("expected action for rate limit score")
+	}
+
+	if actions[0].Type != "rate_limit" {
+		t.Errorf("expected rate_limit action, got %s", actions[0].Type)
+	}
+
+	if actions[0].Notify {
+		t.Error("rate_limit should not notify")
+	}
+
+	if !actions[0].Block {
+		t.Error("rate_limit should block (short duration)")
+	}
+
+	if actions[0].Duration.Minutes() != float64(cfg.Scoring.RateLimitMin) {
+		t.Errorf("expected %d min rate limit, got %v", cfg.Scoring.RateLimitMin, actions[0].Duration)
+	}
+}
+
+func TestDecisionEvaluateRateLimitBelowThreshold(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.SetDefaults()
+	logger := zap.NewNop()
+
+	dec := NewDecision(cfg, nil, logger)
+	ruleEng := rules.NewEngine(cfg, logger)
+	ruleEng.LoadDefaults()
+
+	evt := pipeline.Envelope{
+		Event: pipeline.BaseEvent{IP: "1.2.3.4"},
+	}
+
+	// 35 is below rate_limit_score (40) but above quarantine_score (30)
+	scores := &ScoreResult{
+		IP: "1.2.3.4", FinalScore: 35,
+		Behavioral: 35, Sources: []string{"behavioral"},
+	}
+
+	actions := dec.Evaluate(context.Background(), evt, scores, ruleEng)
+	if len(actions) == 0 {
+		t.Fatal("expected action for quarantine score")
+	}
+
+	if actions[0].Type != "quarantine" {
+		t.Errorf("expected quarantine for score 35, got %s", actions[0].Type)
+	}
+}
+
 func TestDecisionEvaluateCentralFeed(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.SetDefaults()
 	logger := zap.NewNop()
 
-	fw, err := firewall.NewNftables(cfg, logger)
-	if err != nil {
-		t.Skip("nftables not available:", err)
-	}
-
-	dec := NewDecision(cfg, fw, logger)
+	dec := NewDecision(cfg, nil, logger)
 	ruleEng := rules.NewEngine(cfg, logger)
 	ruleEng.LoadDefaults()
 

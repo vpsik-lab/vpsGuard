@@ -1,6 +1,6 @@
 [Unit]
 Description=VPS-Guard Security Agent
-Documentation=https://github.com/vps-guard/vps-guard
+Documentation=https://github.com/vpsik-lab/vpsGuard
 After=network.target nftables.service
 
 [Service]
@@ -17,6 +17,7 @@ ProtectHome=yes
 PrivateTmp=yes
 MemoryMax=256M
 CPUQuota=50%
+TasksMax=50
 LimitNOFILE=1024
 
 [Install]

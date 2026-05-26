@@ -1,4 +1,4 @@
-module github.com/vps-guard/vps-guard
+module github.com/vpsik-lab/vpsGuard
 
 go 1.22
 

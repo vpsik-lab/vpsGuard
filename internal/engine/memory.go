@@ -19,10 +19,13 @@ type ReputationMemory struct {
 	ttl   time.Duration
 }
 
-func NewReputationMemory() *ReputationMemory {
+func NewReputationMemory(ttl time.Duration) *ReputationMemory {
+	if ttl <= 0 {
+		ttl = 7 * 24 * time.Hour
+	}
 	return &ReputationMemory{
 		store: make(map[string]*MemoryEntry),
-		ttl:   7 * 24 * time.Hour,
+		ttl:   ttl,
 	}
 }
 
@@ -64,14 +67,18 @@ func (m *ReputationMemory) GetScore(ip string) int {
 	}
 
 	score := 0
-	if entry.Count > 1 {
-		score += 5
-	}
-	if entry.Count > 5 {
-		score += 10
-	}
-	if entry.Count > 20 {
+
+	switch {
+	case entry.Count > 20:
+		score += 70
+	case entry.Count > 10:
+		score += 50
+	case entry.Count > 5:
+		score += 30
+	case entry.Count >= 3:
 		score += 15
+	case entry.Count >= 1:
+		score += 5
 	}
 
 	avg := 0
@@ -82,8 +89,8 @@ func (m *ReputationMemory) GetScore(ip string) int {
 		avg /= len(entry.Scores)
 	}
 
-	if avg > 30 {
-		score += 10
+	if avg > 60 {
+		score += 20
 	}
 
 	return score

@@ -6,10 +6,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vps-guard/vps-guard/internal/config"
-	"github.com/vps-guard/vps-guard/internal/firewall"
-	"github.com/vps-guard/vps-guard/internal/pipeline"
-	"github.com/vps-guard/vps-guard/internal/rules"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/firewall"
+	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/rules"
 )
 
 type Action struct {
@@ -40,6 +40,8 @@ func (d *DecisionEngine) Evaluate(ctx context.Context, evt pipeline.Envelope, sc
 	ip := evt.SourceIP()
 
 	blockThreshold := d.cfg.Scoring.BlockThreshold
+	rateLimitScore := d.cfg.Scoring.RateLimitScore
+	rateLimitMin := time.Duration(d.cfg.Scoring.RateLimitMin) * time.Minute
 	quarantineScore := d.cfg.Scoring.QuarantineScore
 	quarantineMin := time.Duration(d.cfg.Scoring.QuarantineMin) * time.Minute
 	defaultBlock := time.Duration(d.cfg.Firewall.DefaultBlockDuration) * time.Hour
@@ -58,6 +60,21 @@ func (d *DecisionEngine) Evaluate(ctx context.Context, evt pipeline.Envelope, sc
 			zap.String("ip", ip),
 			zap.Int("score", scores.FinalScore),
 			zap.Duration("duration", defaultBlock),
+		)
+
+	case scores.FinalScore >= rateLimitScore:
+		actions = append(actions, Action{
+			Type:     "rate_limit",
+			Score:    scores.FinalScore,
+			Block:    true,
+			Duration: rateLimitMin,
+			Notify:   false,
+			Reason:   "rate_limit_applied",
+		})
+		d.logger.Info("rate limiting IP",
+			zap.String("ip", ip),
+			zap.Int("score", scores.FinalScore),
+			zap.Duration("duration", rateLimitMin),
 		)
 
 	case scores.FinalScore >= quarantineScore:

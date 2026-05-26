@@ -32,9 +32,8 @@ Source | Type | Latency | Cached
 [AbuseIPDB API v2](https://www.abuseipdb.com/api.html) | REST | ~500ms | ✅ (24h TTL)
 
 **Scoring logic**:
-- `confidenceScore` from AbuseIPDB mapped directly (0–100)
-- `totalReports`: contributes up to +20 for >100 reports
-- Final: `min(confidenceScore + bonus, 100)`
+- `abuseConfidenceScore` from AbuseIPDB mapped directly (0–100)
+- Available offline: returns 0
 
 ### 2.2 AlienVault OTX Score (weight: 0.20)
 
@@ -45,30 +44,38 @@ Source | Type | Latency | Cached
 **Scoring logic**:
 - Pulse count mapped to score:
   - 0 pulses → 0
-  - 1–2 pulses → 30
-  - 3–5 pulses → 50
-  - 6–10 pulses → 70
-  - >10 pulses → 90
+  - 1–2 pulses → 15
+  - 3–5 pulses → 35
+  - 6–10 pulses → 55
+  - 11–25 pulses → 75
+  - >25 pulses → 90
 
 ### 2.3 Behavioral Score (weight: 0.30)
 
 **Input**: Local SSH failed login events from `auth.log` / systemd journal.
 
-**Scoring logic** (evaluated per IP within a 10-minute sliding window):
+**Scoring logic** (evaluated per IP within a configurable sliding window):
 
 | Condition | Score |
 |-----------|-------|
-| Attempts > threshold (default: 5) | +25 |
-| Attempts > threshold × 3 (default: 15) | +15 |
-| Elapsed < window AND attempts > threshold | +20 |
+| Attempts >= threshold (default: 5) | +25 |
+| Attempts >= threshold × 3 (default: 15) | +15 |
+| Elapsed < window AND attempts >= threshold | +20 |
 | Unique usernames > 3 | +20 |
 | Unique ports > 5 | +20 |
+
+**Configurable via `config.yaml`**:
+```yaml
+scoring:
+  behavior_window_minutes: 10   # sliding window duration (default: 10)
+  behavior_threshold: 5         # attempts threshold within window (default: 5)
+```
 
 **Maximum**: 100
 
 ### 2.4 Temporal Score (weight: 0.10)
 
-**Input**: Historical reputation from Agent's memory (7-day window).
+**Input**: Historical reputation from Agent's memory (configurable retention window, default 7 days).
 
 **Scoring logic**:
 
@@ -80,9 +87,18 @@ Source | Type | Latency | Cached
 | 11–20 events | +50 |
 | >20 events | +70 |
 | Historical avg score > 60 | +20 |
-| Multiple unique days | +10 |
 
-**Maximum**: 100
+**Planned**:
+- Multiple unique days bonus (+10)
+- Per-day score decay
+
+**Maximum**: 90
+
+**Configurable via `config.yaml`**:
+```yaml
+scoring:
+  temporal_ttl_hours: 168   # retention window in hours (default: 168 = 7 days)
+```
 
 Memory is cleaned up hourly (goroutine in `main.go`).
 
@@ -91,25 +107,38 @@ Memory is cleaned up hourly (goroutine in `main.go`).
 **Input**: Threat items pulled from the Central Platform API.
 
 **Scoring logic**:
-- `confidence` from feed item mapped directly (0–100)
-- Confidence tiers override raw score:
-  - ≥ 90: immediate block + no notify needed (handled by decision engine)
-  - 60–89: quarantine + score boost
-  - < 60: score boost only (added to final weighted sum)
+- `score` from feed item mapped directly (0–100)
+- Filtered by `min_confidence` threshold
 
 ---
 
 ## 3. Decision Thresholds
 
-Once `FinalScore` is computed, the Decision Engine maps it to an action:
+Once `FinalScore` is computed, the Decision Engine maps it to an action using configurable thresholds:
 
 | Score Range | Verdict | Action |
 |-------------|---------|--------|
-| 80–100 | Critical | Block 24h + notify |
-| 50–79 | High | Block 24h + notify |
-| 25–49 | Medium | Quarantine 15m + notify |
+| ≥ `block_threshold` (default: 60) | Critical/High | Block + notify |
+| ≥ `rate_limit_score` (default: 40) | Rate-limit | Rate-limit + notify |
+| ≥ `quarantine_score` (default: 30) | Medium | Quarantine 15m + notify |
 | 1–24 | Low | Monitor only |
 | 0 | Clean | Ignore |
+
+**Threshold ordering is enforced at startup** (`config.go:Validate()`):
+```
+block_threshold > rate_limit_score > quarantine_score
+```
+If violated, the agent refuses to start. This prevents misconfiguration where a lower-priority action could override a higher one.
+
+**Configurable via `config.yaml`**:
+```yaml
+scoring:
+  block_threshold: 60     # scores >= this trigger a block
+  rate_limit_score: 40    # scores >= this trigger rate-limiting
+  quarantine_score: 30    # scores >= this trigger quarantine
+  rate_limit_minutes: 5   # rate-limit duration
+  quarantine_minutes: 15  # quarantine duration
+```
 
 Actions are **overridable** by the Rules Engine:
 - A matching rule can escalate (e.g., `invalid_user` → block even at score 10)
@@ -123,9 +152,9 @@ The Central Feed has its own confidence tiers that interact with scoring:
 
 | Confidence | Override | Agent Behaviour |
 |------------|----------|-----------------|
-| ≥ 90 | Block (bypass scoring) | Immediate nftables block, 24h, notify |
-| 60–89 | Quarantine | Temporary block 15m, monitor, notify |
-| < 60 | Score boost | Added to weighted sum, normal thresholds |
+| >= `central_block_threshold` (80) | Block | Immediate nftables block, 24h, notify |
+| >= `central_quarantine_threshold` (50) | Quarantine | Temporary block 15m, monitor, notify |
+| < quarantine threshold | Score boost | Added to weighted sum, normal thresholds |
 
 These tiers exist to prevent false positives: even a high-confidence feed item gets local verification through behavioral analysis.
 

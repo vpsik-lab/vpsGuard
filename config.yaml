@@ -28,10 +28,15 @@ scoring:
   temporal_weight: 0.10
   central_weight: 0.15
   block_threshold: 60
+  rate_limit_score: 40
+  rate_limit_minutes: 5
   quarantine_score: 30
   quarantine_minutes: 15
   central_block_threshold: 80
   central_quarantine_threshold: 50
+  behavior_window_minutes: 10
+  behavior_threshold: 5
+  temporal_ttl_hours: 168
 
 firewall:
   table: vps_guard
@@ -47,10 +52,12 @@ notify:
   smtp_pass: ""
   email_from: ""
   email_to: ""
+  cooldown_minutes: 10
 
 self_protect:
   watchdog_interval_seconds: 30
   enable_file_check: true
+  config_checksum: ""
 
 central_feed:
   enabled: false

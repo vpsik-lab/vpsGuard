@@ -26,12 +26,3 @@ rules:
     action: block
     score_weight: 20
     duration: 15m
-
-  - name: central_feed_critical
-    description: Block IPs from central threat feed with high confidence
-    conditions:
-      source: central_feed
-      confidence: ">90"
-    action: block
-    score_weight: 50
-    duration: 48h

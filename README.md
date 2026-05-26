@@ -21,6 +21,7 @@ See [`docs/AGENT-API-CONTRACT.md`](docs/AGENT-API-CONTRACT.md) for the interface
 
 - **Real-time monitoring** — auth.log + systemd journal
 - **Hybrid scoring** — Behavioral (30%) + AbuseIPDB (25%) + OTX (20%) + Temporal (10%) + Central Feed (15%)
+- **Configurable thresholds** — Block, rate-limit, quarantine scores + behavior window/limit + temporal TTL all via `config.yaml`
 - **nftables blocking** — Dynamic sets with auto-expire
 - **Works offline** — Fully functional without internet
 - **Telegram + Email alerts** — Rich HTML notifications
@@ -33,7 +34,7 @@ See [`docs/AGENT-API-CONTRACT.md`](docs/AGENT-API-CONTRACT.md) for the interface
 
 ```bash
 # 1. Build
-git clone https://github.com/vps-guard/vps-guard.git
+git clone https://github.com/vpsik-lab/vpsGuard.git
 cd vps-guard
 go build -ldflags="-s -w" -o vps-guard ./cmd/vps-guard/
 
@@ -47,12 +48,12 @@ sudo ./vps-guard -config /etc/vps-guard/config.yaml
 
 Or use the install script:
 ```bash
-curl -sSL https://raw.githubusercontent.com/vps-guard/vps-guard/main/deploy/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | bash
 ```
 
 For unattended installation:
 ```bash
-curl -sSL https://raw.githubusercontent.com/vps-guard/vps-guard/main/deploy/install.sh | bash -s -- --unattended
+curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | bash -s -- --unattended
 ```
 
 See [`docs/AGENT-DEPLOYMENT.md`](docs/AGENT-DEPLOYMENT.md) for full installation options.
@@ -107,4 +108,4 @@ See [`docs/AGENT-DEPLOYMENT.md`](docs/AGENT-DEPLOYMENT.md) for full installation
 
 ## License
 
-MIT
+GNU AGPLv3

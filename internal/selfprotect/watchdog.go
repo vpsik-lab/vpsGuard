@@ -2,6 +2,9 @@ package selfprotect
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"os"
 	"time"
 
@@ -9,22 +12,27 @@ import (
 )
 
 type Watchdog struct {
-	logger     *zap.Logger
-	lastHealth time.Time
-	configPath string
-	tickCount  int64
+	logger            *zap.Logger
+	lastHealth        time.Time
+	configPath        string
+	interval          time.Duration
+	tickCount         int64
+	expectedChecksum  string
+	tamperWarnings    int
 }
 
-func NewWatchdog(logger *zap.Logger) *Watchdog {
+func NewWatchdog(logger *zap.Logger, configPath string, interval time.Duration, expectedChecksum string) *Watchdog {
 	return &Watchdog{
-		logger:     logger,
-		lastHealth: time.Now(),
-		configPath: "/etc/vps-guard/config.yaml",
+		logger:           logger,
+		lastHealth:       time.Now(),
+		configPath:       configPath,
+		interval:         interval,
+		expectedChecksum: expectedChecksum,
 	}
 }
 
 func (w *Watchdog) Run(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
 
 	w.logger.Info("watchdog started")
@@ -46,8 +54,51 @@ func (w *Watchdog) healthCheck() {
 		w.logger.Error("config file missing - possible tamper",
 			zap.String("path", w.configPath),
 		)
+		w.lastHealth = time.Now()
+		return
 	}
+
+	if w.expectedChecksum != "" {
+		f, err := os.Open(w.configPath)
+		if err != nil {
+			w.logger.Error("cannot open config for checksum",
+				zap.String("path", w.configPath),
+				zap.Error(err),
+			)
+			w.lastHealth = time.Now()
+			return
+		}
+		h := sha256.New()
+		if _, err := io.Copy(h, f); err != nil {
+			f.Close()
+			w.logger.Error("cannot read config for checksum",
+				zap.String("path", w.configPath),
+				zap.Error(err),
+			)
+			w.lastHealth = time.Now()
+			return
+		}
+		f.Close()
+		got := hex.EncodeToString(h.Sum(nil))
+		if got != w.expectedChecksum {
+			w.tamperWarnings++
+			w.logger.Error("config file checksum mismatch - possible tamper",
+				zap.String("path", w.configPath),
+				zap.String("expected", w.expectedChecksum),
+				zap.String("got", got),
+				zap.Int("consecutive_warnings", w.tamperWarnings),
+			)
+			w.lastHealth = time.Now()
+			return
+		}
+		w.tamperWarnings = 0
+	}
+
 	w.lastHealth = time.Now()
+}
+
+func (w *Watchdog) TamperWarnings() int {
+	return w.tamperWarnings
 }
 
 func (w *Watchdog) Ping() {

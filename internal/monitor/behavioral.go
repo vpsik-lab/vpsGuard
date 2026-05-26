@@ -62,20 +62,20 @@ func (b *BehavioralAnalyzer) GetScore(ip string) int {
 	score := 0
 	elapsed := time.Since(rec.FirstSeen)
 
-	if rec.Attempts > b.threshold {
+	if rec.Attempts >= b.threshold {
 		score += 25
 	}
-	if rec.Attempts > b.threshold*3 {
+	if rec.Attempts >= b.threshold*3 {
 		score += 15
 	}
-	if elapsed < b.window && rec.Attempts > b.threshold {
-		score += 10
+	if elapsed < b.window && rec.Attempts >= b.threshold {
+		score += 20
 	}
 	if len(rec.Usernames) > 3 {
-		score += 15
+		score += 20
 	}
 	if len(rec.Ports) > 5 {
-		score += 15
+		score += 20
 	}
 
 	return score

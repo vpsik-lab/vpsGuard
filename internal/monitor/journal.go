@@ -6,8 +6,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vps-guard/vps-guard/internal/config"
-	"github.com/vps-guard/vps-guard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
 )
 
 type JournalMonitor struct {

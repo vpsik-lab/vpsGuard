@@ -8,7 +8,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vps-guard/vps-guard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
 )
 
 type NftablesManager struct {

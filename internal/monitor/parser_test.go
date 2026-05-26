@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"testing"
+	"time"
 )
 
 func TestParserParse(t *testing.T) {
@@ -102,8 +103,8 @@ func TestToEvent(t *testing.T) {
 	}
 }
 
-func TestBehaviouralAnalyzer(t *testing.T) {
-	ba := NewBehavioralAnalyzer(10, 3)
+func TestBehavioralAnalyzerFromParser(t *testing.T) {
+	ba := NewBehavioralAnalyzer(10*time.Minute, 3)
 
 	score := ba.GetScore("1.2.3.4")
 	if score != 0 {

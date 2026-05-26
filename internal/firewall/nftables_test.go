@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/vps-guard/vps-guard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
 )
 
 func TestNewNftables(t *testing.T) {

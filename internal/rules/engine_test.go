@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vps-guard/vps-guard/internal/config"
-	"github.com/vps-guard/vps-guard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
 )
 
 func TestEngineDefaults(t *testing.T) {
@@ -22,8 +22,8 @@ func TestEngineDefaults(t *testing.T) {
 	if n == 0 {
 		t.Fatal("expected default rules, got 0")
 	}
-	if n != 4 {
-		t.Errorf("expected 4 default rules, got %d", n)
+	if n != 3 {
+		t.Errorf("expected 3 default rules, got %d", n)
 	}
 }
 

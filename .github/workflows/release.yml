@@ -35,7 +35,7 @@ jobs:
           echo "" >> $GITHUB_OUTPUT
           echo "### Installation" >> $GITHUB_OUTPUT
           echo '```bash' >> $GITHUB_OUTPUT
-          echo "curl -sSL https://raw.githubusercontent.com/vps-guard/vps-guard/${{ github.ref_name }}/deploy/install.sh | bash" >> $GITHUB_OUTPUT
+          echo "curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/${{ github.ref_name }}/deploy/install.sh | bash" >> $GITHUB_OUTPUT
           echo '```' >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "### Checksums" >> $GITHUB_OUTPUT

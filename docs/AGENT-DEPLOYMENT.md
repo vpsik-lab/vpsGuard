@@ -8,12 +8,12 @@
 ## 1. Quick Install (Recommended)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/vps-guard/vps-guard/main/deploy/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | bash
 ```
 
 Or unattended:
 ```bash
-curl -sSL https://raw.githubusercontent.com/vps-guard/vps-guard/main/deploy/install.sh | bash -s -- --unattended
+curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | bash -s -- --unattended
 ```
 
 ### Install Script Options
@@ -46,7 +46,7 @@ sudo apt update && sudo apt install -y golang nftables git
 ### 2.2 Build from Source
 
 ```bash
-git clone https://github.com/vps-guard/vps-guard.git
+git clone https://github.com/vpsik-lab/vpsGuard.git
 cd vps-guard
 go build -ldflags="-s -w" -o vps-guard ./cmd/vps-guard/
 sudo mv vps-guard /usr/local/bin/
@@ -225,7 +225,7 @@ grep '"action":"block"' /var/log/vps-guard/agent.log
 
 ```bash
 # Re-run the install script (upgrades binary, preserves config)
-curl -sSL https://raw.githubusercontent.com/vps-guard/vps-guard/main/deploy/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/install.sh | bash
 ```
 
 ---

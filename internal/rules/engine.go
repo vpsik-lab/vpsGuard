@@ -9,8 +9,8 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 
-	"github.com/vps-guard/vps-guard/internal/config"
-	"github.com/vps-guard/vps-guard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
 )
 
 type Rule struct {
@@ -78,17 +78,7 @@ func (e *Engine) LoadDefaults() {
 			ScoreAdd: 20,
 			Duration: "15m",
 		},
-		{
-			Name:        "central_feed_critical",
-			Description: "Block IPs from central feed with high confidence",
-			Conditions: map[string]string{
-				"source":     "central_feed",
-				"confidence": ">90",
-			},
-			Action:   "block",
-			ScoreAdd: 50,
-			Duration: "48h",
-		},
+
 	}
 }
 
@@ -154,10 +144,7 @@ func getFieldValue(evt pipeline.Envelope, field string) (int, bool) {
 			return e.WindowSec, true
 		}
 	case "confidence":
-		switch e := evt.Event.(type) {
-		case pipeline.SSHFailedLogin:
-			return e.Attempts, false
-		}
+		return 0, false
 	}
 	return 0, false
 }

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 VERSION="${VERSION:-latest}"
-REPO="vps-guard/vps-guard"
+REPO="vpsik-lab/vpsGuard"
 RAW_BASE="https://raw.githubusercontent.com/$REPO/main"
 BINARY="vps-guard"
 PREFIX="/usr/local"
@@ -254,10 +254,15 @@ scoring:
   temporal_weight: 0.10
   central_weight: 0.15
   block_threshold: 60
+  rate_limit_score: 40
+  rate_limit_minutes: 5
   quarantine_score: 30
   quarantine_minutes: 15
   central_block_threshold: 80
   central_quarantine_threshold: 50
+  behavior_window_minutes: 10
+  behavior_threshold: 5
+  temporal_ttl_hours: 168
 firewall:
   table: vps_guard
   set_name: blacklist
@@ -271,9 +276,11 @@ notify:
   smtp_pass: ""
   email_from: ""
   email_to: ""
+  cooldown_minutes: 10
 self_protect:
   watchdog_interval_seconds: 30
   enable_file_check: true
+  config_checksum: ""
 central_feed:
   enabled: false
   api_url: "https://your-platform.com/api/v1/threat-feed"
@@ -298,7 +305,7 @@ else
         cat > "$SYSTEMD_DIR/vps-guard.service" << 'SVCEOF'
 [Unit]
 Description=VPS-Guard Security Agent
-Documentation=https://github.com/vps-guard/vps-guard
+Documentation=https://github.com/vpsik-lab/vpsGuard
 After=network.target nftables.service
 [Service]
 Type=simple
@@ -314,6 +321,7 @@ ProtectHome=yes
 PrivateTmp=yes
 MemoryMax=256M
 CPUQuota=50%
+TasksMax=50
 LimitNOFILE=1024
 [Install]
 WantedBy=multi-user.target

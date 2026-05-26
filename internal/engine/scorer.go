@@ -7,10 +7,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vps-guard/vps-guard/internal/config"
-	"github.com/vps-guard/vps-guard/internal/monitor"
-	"github.com/vps-guard/vps-guard/internal/pipeline"
-	"github.com/vps-guard/vps-guard/internal/threat"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/monitor"
+	"github.com/vpsik-lab/vpsGuard/internal/pipeline"
+	"github.com/vpsik-lab/vpsGuard/internal/threat"
 )
 
 type ScoreResult struct {
@@ -56,8 +56,11 @@ func NewScorer(cfg *config.Config, logger *zap.Logger) *Scorer {
 	return &Scorer{
 		cfg:        cfg,
 		logger:     logger,
-		behavioral: monitor.NewBehavioralAnalyzer(10*time.Minute, 5),
-		memory:     NewReputationMemory(),
+		behavioral: monitor.NewBehavioralAnalyzer(
+			time.Duration(cfg.Scoring.BehaviorWindowMinutes)*time.Minute,
+			cfg.Scoring.BehaviorThreshold,
+		),
+		memory: NewReputationMemory(time.Duration(cfg.Scoring.TemporalTTLHours) * time.Hour),
 	}
 }
 

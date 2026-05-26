@@ -7,7 +7,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vps-guard/vps-guard/internal/config"
+	"github.com/vpsik-lab/vpsGuard/internal/config"
 )
 
 type IntelResult struct {
@@ -141,4 +141,14 @@ func (c *IntelClient) SetCentralScore(ctx context.Context, ip string, score, con
 
 func (c *IntelClient) CacheGet(ip string) *CacheEntry {
 	return c.cache.Get(ip)
+}
+
+func (c *IntelClient) ReportIP(ctx context.Context, ip string) {
+	if c.abuseipdb == nil {
+		return
+	}
+	<-c.rateLimit.C
+	if err := c.abuseipdb.Report(ctx, ip, []int{18, 22}, "SSH brute-force blocked by VPS-Guard"); err != nil {
+		c.logger.Warn("AbuseIPDB report failed", zap.String("ip", ip), zap.Error(err))
+	}
 }
