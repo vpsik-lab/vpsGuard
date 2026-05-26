@@ -216,12 +216,31 @@ else
             run apt-get install -y -qq golang-go 2>/dev/null || true
     fi
     if command -v go &>/dev/null; then
+        if ! command -v git &>/dev/null; then
+            run apt-get install -y -qq git 2>/dev/null || true
+        fi
         BUILD_DIR=$(mktemp -d)
-        git clone --depth 1 "https://github.com/$REPO.git" "$BUILD_DIR/src" 2>/dev/null || true
-        (cd "$BUILD_DIR/src" && go build -o "$PREFIX/bin/$BINARY" -ldflags="-s -w" ./cmd/vps-guard)
-        rm -rf "$BUILD_DIR"
-        installed_from="source"
-        info "Binary built: $PREFIX/bin/$BINARY"
+        if command -v git &>/dev/null; then
+            run git clone --depth 1 "https://github.com/$REPO.git" "$BUILD_DIR/src"
+        else
+            SRC_ARCHIVE="https://github.com/$REPO/archive/refs/heads/main.tar.gz"
+            fetch "$SRC_ARCHIVE" > "$BUILD_DIR/repo.tar.gz" 2>/dev/null || true
+            if [ -f "$BUILD_DIR/repo.tar.gz" ]; then
+                tar xzf "$BUILD_DIR/repo.tar.gz" -C "$BUILD_DIR" 2>/dev/null || true
+                SRC_DIR=$(ls -d "$BUILD_DIR"/*/ 2>/dev/null | head -1)
+                [ -n "$SRC_DIR" ] && mv "$SRC_DIR" "$BUILD_DIR/src"
+            fi
+        fi
+        if [ -f "$BUILD_DIR/src/go.mod" ]; then
+            (cd "$BUILD_DIR/src" && go build -o "$PREFIX/bin/$BINARY" -ldflags="-s -w" ./cmd/vps-guard)
+            rm -rf "$BUILD_DIR"
+            installed_from="source"
+            info "Binary built: $PREFIX/bin/$BINARY"
+        else
+            rm -rf "$BUILD_DIR"
+            error "Failed to download source. Check network or install Go manually."
+            exit 1
+        fi
     else
         error "Could not install Go. Install manually: apt-get install golang"
         exit 1
