@@ -12,11 +12,11 @@ import (
 
 func TestNewWatchdog(t *testing.T) {
 	logger := zap.NewNop()
-	w := NewWatchdog(logger, "/etc/vps-guard/config.yaml", 30*time.Second, "")
+	w := NewWatchdog(logger, "/etc/vpsGuard/config.yaml", 30*time.Second, "")
 	if w == nil {
 		t.Fatal("NewWatchdog returned nil")
 	}
-	if w.configPath != "/etc/vps-guard/config.yaml" {
+	if w.configPath != "/etc/vpsGuard/config.yaml" {
 		t.Errorf("configPath = %q", w.configPath)
 	}
 	if w.interval != 30*time.Second {
@@ -26,7 +26,7 @@ func TestNewWatchdog(t *testing.T) {
 
 func TestWatchdogPing(t *testing.T) {
 	logger := zap.NewNop()
-	w := NewWatchdog(logger, "/etc/vps-guard/config.yaml", 30*time.Second, "")
+	w := NewWatchdog(logger, "/etc/vpsGuard/config.yaml", 30*time.Second, "")
 
 	time.Sleep(10 * time.Millisecond)
 	w.Ping()
@@ -42,7 +42,7 @@ func TestWatchdogPing(t *testing.T) {
 
 func TestWatchdogUptime(t *testing.T) {
 	logger := zap.NewNop()
-	w := NewWatchdog(logger, "/etc/vps-guard/config.yaml", 30*time.Second, "")
+	w := NewWatchdog(logger, "/etc/vpsGuard/config.yaml", 30*time.Second, "")
 
 	time.Sleep(5 * time.Millisecond)
 	uptime := w.Uptime()
@@ -54,7 +54,7 @@ func TestWatchdogUptime(t *testing.T) {
 
 func TestWatchdogTickCount(t *testing.T) {
 	logger := zap.NewNop()
-	w := NewWatchdog(logger, "/etc/vps-guard/config.yaml", 30*time.Second, "")
+	w := NewWatchdog(logger, "/etc/vpsGuard/config.yaml", 30*time.Second, "")
 
 	if w.tickCount != 0 {
 		t.Errorf("initial tickCount = %d, want 0", w.tickCount)

@@ -1,4 +1,4 @@
-# VPS-Guard Agent — Deployment Guide
+# vpsGuard Agent — Deployment Guide
 
 **Version**: 0.2.0  
 **OS**: Ubuntu 20.04+ / Debian 11+
@@ -28,7 +28,7 @@ curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/insta
 This script:
 1. Detects OS and architecture
 2. Downloads the pre-built binary OR builds from source
-3. Creates `/etc/vps-guard/config.yaml` with defaults
+3. Creates `/etc/vpsGuard/config.yaml` with defaults
 4. Installs systemd service
 5. Configures logrotate
 6. Starts the agent
@@ -47,33 +47,33 @@ sudo apt update && sudo apt install -y golang nftables git
 
 ```bash
 git clone https://github.com/vpsik-lab/vpsGuard.git
-cd vps-guard
-go build -ldflags="-s -w" -o vps-guard ./cmd/vps-guard/
-sudo mv vps-guard /usr/local/bin/
+cd vpsGuard
+go build -ldflags="-s -w" -o vpsGuard ./cmd/vpsGuard/
+sudo mv vpsGuard /usr/local/bin/
 ```
 
 ### 2.3 Create Config
 
 ```bash
-sudo mkdir -p /etc/vps-guard
-sudo cp config.yaml /etc/vps-guard/
-sudo chown root:root /etc/vps-guard/config.yaml
-sudo chmod 600 /etc/vps-guard/config.yaml
+sudo mkdir -p /etc/vpsGuard
+sudo cp config.yaml /etc/vpsGuard/
+sudo chown root:root /etc/vpsGuard/config.yaml
+sudo chmod 600 /etc/vpsGuard/config.yaml
 ```
 
 ### 2.4 Install systemd Service
 
 ```bash
-sudo cp deploy/vps-guard.service /etc/systemd/system/
+sudo cp deploy/vpsGuard.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable vps-guard
-sudo systemctl start vps-guard
+sudo systemctl enable vpsGuard
+sudo systemctl start vpsGuard
 ```
 
 ### 2.5 Install Logrotate
 
 ```bash
-sudo cp deploy/vps-guard.logrotate /etc/logrotate.d/vps-guard
+sudo cp deploy/vpsGuard.logrotate /etc/logrotate.d/vpsGuard
 ```
 
 ---
@@ -96,8 +96,8 @@ Agent runs in local-only mode if no API keys are set.
 ### 3.2 Full Config
 
 ```yaml
-log_dir: /var/log/vps-guard
-cache_dir: /var/cache/vps-guard
+log_dir: /var/log/vpsGuard
+cache_dir: /var/cache/vpsGuard
 agent_mode: hybrid              # local | hybrid | central_only
 
 monitor:
@@ -125,7 +125,7 @@ scoring:
   central_quar_threshold: 50
 
 firewall:
-  table: vps_guard
+  table: vpsGuard
   set_name: blacklist
   default_block_hours: 24
 
@@ -164,16 +164,16 @@ bootstrap:
 
 ```bash
 # Status
-systemctl status vps-guard
+systemctl status vpsGuard
 
 # Logs
-journalctl -u vps-guard -f
+journalctl -u vpsGuard -f
 
 # Restart
-systemctl restart vps-guard
+systemctl restart vpsGuard
 
 # Stop
-systemctl stop vps-guard
+systemctl stop vpsGuard
 ```
 
 ### 4.1 Service Sandbox
@@ -196,12 +196,12 @@ CAP_SYSLOG                # Journal access only
 ## 5. Logging
 
 - **Console**: stdout (JSON lines)
-- **File**: `/var/log/vps-guard/agent.log`
+- **File**: `/var/log/vpsGuard/agent.log`
 - **Rotation**: daily, 7 day retention, compressed
 
 Manual log view:
 ```bash
-tail -f /var/log/vps-guard/agent.log | jq
+tail -f /var/log/vpsGuard/agent.log | jq
 ```
 
 ---
@@ -210,13 +210,13 @@ tail -f /var/log/vps-guard/agent.log | jq
 
 ```bash
 # Check if agent is running
-systemctl is-active vps-guard
+systemctl is-active vpsGuard
 
 # Check nftables set
-sudo nft list set inet vps_guard blacklist
+sudo nft list set inet vpsGuard blacklist
 
 # Check agent log for actions
-grep '"action":"block"' /var/log/vps-guard/agent.log
+grep '"action":"block"' /var/log/vpsGuard/agent.log
 ```
 
 ---
@@ -233,13 +233,13 @@ curl -sSL https://raw.githubusercontent.com/vpsik-lab/vpsGuard/main/deploy/insta
 ## 8. Uninstalling
 
 ```bash
-sudo systemctl stop vps-guard
-sudo systemctl disable vps-guard
-sudo rm /etc/systemd/system/vps-guard.service
-sudo rm /usr/local/bin/vps-guard
-sudo rm -rf /etc/vps-guard
-sudo rm -rf /var/log/vps-guard
-sudo rm /etc/logrotate.d/vps-guard
+sudo systemctl stop vpsGuard
+sudo systemctl disable vpsGuard
+sudo rm /etc/systemd/system/vpsGuard.service
+sudo rm /usr/local/bin/vpsGuard
+sudo rm -rf /etc/vpsGuard
+sudo rm -rf /var/log/vpsGuard
+sudo rm /etc/logrotate.d/vpsGuard
 ```
 
 ---
@@ -248,7 +248,7 @@ sudo rm /etc/logrotate.d/vps-guard
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Service fails to start | Config validation error | Run `vps-guard -config /etc/vps-guard/config.yaml` to see error |
-| No blocking | nftables table missing | `sudo nft create table inet vps_guard` |
+| Service fails to start | Config validation error | Run `vpsGuard -config /etc/vpsGuard/config.yaml` to see error |
+| No blocking | nftables table missing | `sudo nft create table inet vpsGuard` |
 | High memory | Event backlog | Check `journal` is not flooding; increase capacity |
-| "Permission denied" | Missing capabilities | `setcap cap_net_admin,cap_syslog+eip /usr/local/bin/vps-guard` |
+| "Permission denied" | Missing capabilities | `setcap cap_net_admin,cap_syslog+eip /usr/local/bin/vpsGuard` |

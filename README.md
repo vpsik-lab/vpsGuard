@@ -1,4 +1,4 @@
-# VPS-Guard Agent
+# vpsGuard Agent
 
 **Lightweight intelligent security agent for VPS protection.**  
 Detects SSH brute-force, enriches with threat intelligence (AbuseIPDB, AlienVault OTX), and blocks attackers via nftables dynamic sets.
@@ -9,7 +9,7 @@ Detects SSH brute-force, enriches with threat intelligence (AbuseIPDB, AlienVaul
 
 ## What is this?
 
-VPS-Guard **Agent** is the on-premise component that runs on your VPS.  
+vpsGuard **Agent** is the on-premise component that runs on your VPS.  
 It monitors SSH logs, scores threat activity using a hybrid model, and blocks attackers.
 
 The **Central Platform** (Phase B — separate project) will provide a managed threat intelligence feed that agents can pull from.  
@@ -35,15 +35,15 @@ See [`docs/AGENT-API-CONTRACT.md`](docs/AGENT-API-CONTRACT.md) for the interface
 ```bash
 # 1. Build
 git clone https://github.com/vpsik-lab/vpsGuard.git
-cd vps-guard
-go build -ldflags="-s -w" -o vps-guard ./cmd/vps-guard/
+cd vpsGuard
+go build -ldflags="-s -w" -o vpsGuard ./cmd/vpsGuard/
 
 # 2. Configure
-cp config.yaml /etc/vps-guard/config.yaml
+cp config.yaml /etc/vpsGuard/config.yaml
 # Edit: set API keys, notification tokens, etc.
 
 # 3. Run
-sudo ./vps-guard -config /etc/vps-guard/config.yaml
+sudo ./vpsGuard -config /etc/vpsGuard/config.yaml
 ```
 
 Or use the install script:
@@ -84,7 +84,7 @@ See [`docs/AGENT-DEPLOYMENT.md`](docs/AGENT-DEPLOYMENT.md) for full installation
 ## Project Structure
 
 ```
-├── cmd/vps-guard/main.go     Entry point
+├── cmd/vpsGuard/main.go     Entry point
 ├── internal/
 │   ├── api/                  Central feed pull client
 │   ├── bootstrap/            System hardening
@@ -99,8 +99,8 @@ See [`docs/AGENT-DEPLOYMENT.md`](docs/AGENT-DEPLOYMENT.md) for full installation
 │   └── threat/               AbuseIPDB, OTX, cache
 ├── deploy/
 │   ├── install.sh            One-command installer
-│   ├── vps-guard.service     systemd unit
-│   └── vps-guard.logrotate   Log rotation config
+│   ├── vpsGuard.service     systemd unit
+│   └── vpsGuard.logrotate   Log rotation config
 └── docs/                     Documentation
 ```
 

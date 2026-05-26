@@ -73,7 +73,7 @@ func TestKernelParamsContent(t *testing.T) {
 		"net.ipv4.icmp_echo_ignore_broadcasts":   "1",
 	}
 
-	path := "/tmp/test-sysctl-99-vps-guard.conf"
+	path := "/tmp/test-sysctl-99-vpsGuard.conf"
 	defer os.Remove(path)
 
 	var lines []string

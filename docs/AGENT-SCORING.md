@@ -1,4 +1,4 @@
-# VPS-Guard Agent — Scoring Engine
+# vpsGuard Agent — Scoring Engine
 
 **Version**: 0.2.0  
 **Status**: Stable

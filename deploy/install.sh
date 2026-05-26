@@ -4,12 +4,12 @@ set -euo pipefail
 VERSION="${VERSION:-latest}"
 REPO="vpsik-lab/vpsGuard"
 RAW_BASE="https://raw.githubusercontent.com/$REPO/main"
-BINARY="vps-guard"
+BINARY="vpsGuard"
 PREFIX="/usr/local"
-CONFIG_DIR="/etc/vps-guard"
+CONFIG_DIR="/etc/vpsGuard"
 SYSTEMD_DIR="/etc/systemd/system"
-CACHE_DIR="/var/cache/vps-guard"
-LOG_DIR="/var/log/vps-guard"
+CACHE_DIR="/var/cache/vpsGuard"
+LOG_DIR="/var/log/vpsGuard"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -24,7 +24,7 @@ SSH_PORT=22
 
 usage() {
     cat <<EOF
-VPS-Guard Agent Installer v${VERSION}
+vpsGuard Agent Installer v${VERSION}
 
 Usage: bash install.sh [options]
 
@@ -84,7 +84,7 @@ fetch() {
 
 echo -e "${CYAN}"
 echo "╔══════════════════════════════════════════╗"
-echo "║        VPS-Guard Security Agent         ║"
+echo "║        vpsGuard Security Agent         ║"
 echo "║     Lightweight Intelligent Protection  ║"
 echo "╚══════════════════════════════════════════╝"
 echo -e "${NC}"
@@ -149,9 +149,9 @@ if [ "$HARDENING" = true ]; then
 
     info "Hardening kernel parameters..."
     if [ "$DRY_RUN" = true ]; then
-        echo "[DRY-RUN] Create /etc/sysctl.d/99-vps-guard.conf"
+        echo "[DRY-RUN] Create /etc/sysctl.d/99-vpsGuard.conf"
     else
-        cat > /etc/sysctl.d/99-vps-guard.conf << 'EOF'
+        cat > /etc/sysctl.d/99-vpsGuard.conf << 'EOF'
 net.ipv4.tcp_syncookies=1
 net.ipv4.tcp_synack_retries=2
 net.ipv4.conf.all.rp_filter=1
@@ -160,7 +160,7 @@ net.ipv4.conf.all.accept_source_route=0
 net.ipv4.icmp_echo_ignore_broadcasts=1
 net.ipv4.icmp_ignore_bogus_error_responses=1
 EOF
-        sysctl -p /etc/sysctl.d/99-vps-guard.conf >/dev/null 2>&1 || true
+        sysctl -p /etc/sysctl.d/99-vpsGuard.conf >/dev/null 2>&1 || true
     fi
 
     info "Configuring Fail2ban..."
@@ -184,7 +184,8 @@ fi
 # ── Setup directories ──────────────────────────────────────
 info "Creating directories..."
 run mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOG_DIR"
-run useradd -r -s /bin/false -d /nonexistent vps-guard 2>/dev/null || true
+run useradd -r -s /bin/false -d /nonexistent vpsGuard 2>/dev/null || true
+run chown vpsGuard:vpsGuard "$CACHE_DIR" "$LOG_DIR"
 
 # ── Install binary ─────────────────────────────────────────
 ARCH=$(uname -m)
@@ -232,7 +233,7 @@ else
             fi
         fi
         if [ -f "$BUILD_DIR/src/go.mod" ]; then
-            (cd "$BUILD_DIR/src" && go build -o "$PREFIX/bin/$BINARY" -ldflags="-s -w" ./cmd/vps-guard)
+            (cd "$BUILD_DIR/src" && go build -o "$PREFIX/bin/$BINARY" -ldflags="-s -w" ./cmd/vpsGuard)
             rm -rf "$BUILD_DIR"
             installed_from="source"
             info "Binary built: $PREFIX/bin/$BINARY"
@@ -253,8 +254,8 @@ if [ ! -f "$CONFIG_DIR/config.yaml" ]; then
     if [ "$DRY_RUN" = false ]; then
         fetch "$RAW_BASE/config.yaml" > "$CONFIG_DIR/config.yaml" 2>/dev/null || {
             cat > "$CONFIG_DIR/config.yaml" << 'CONFEOF'
-log_dir: /var/log/vps-guard
-cache_dir: /var/cache/vps-guard
+log_dir: /var/log/vpsGuard
+cache_dir: /var/cache/vpsGuard
 mode: agent
 agent_mode: hybrid
 bootstrap:
@@ -289,7 +290,7 @@ scoring:
   behavior_threshold: 5
   temporal_ttl_hours: 168
 firewall:
-  table: vps_guard
+  table: vpsGuard
   set_name: blacklist
   default_block_hours: 24
 notify:
@@ -314,7 +315,8 @@ central_feed:
   min_confidence: 50
 CONFEOF
         }
-        chmod 600 "$CONFIG_DIR/config.yaml"
+        chown vpsGuard:vpsGuard "$CONFIG_DIR/config.yaml"
+        chmod 640 "$CONFIG_DIR/config.yaml"
         info "Config created: $CONFIG_DIR/config.yaml"
     fi
 fi
@@ -322,26 +324,27 @@ fi
 # ── Install systemd service ────────────────────────────────
 info "Installing systemd service..."
 if [ "$DRY_RUN" = true ]; then
-    echo "[DRY-RUN] Install systemd service to $SYSTEMD_DIR/vps-guard.service"
+    echo "[DRY-RUN] Install systemd service to $SYSTEMD_DIR/vpsGuard.service"
 else
-    if fetch "$RAW_BASE/deploy/vps-guard.service" > /dev/null 2>&1; then
-        fetch "$RAW_BASE/deploy/vps-guard.service" > "$SYSTEMD_DIR/vps-guard.service"
+    if fetch "$RAW_BASE/deploy/vpsGuard.service" > /dev/null 2>&1; then
+        fetch "$RAW_BASE/deploy/vpsGuard.service" > "$SYSTEMD_DIR/vpsGuard.service"
     else
-        cat > "$SYSTEMD_DIR/vps-guard.service" << 'SVCEOF'
+        cat > "$SYSTEMD_DIR/vpsGuard.service" << 'SVCEOF'
 [Unit]
-Description=VPS-Guard Security Agent
+Description=vpsGuard Security Agent
 Documentation=https://github.com/vpsik-lab/vpsGuard
 After=network.target nftables.service
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/vps-guard -config /etc/vps-guard/config.yaml
+ExecStart=/usr/local/bin/vpsGuard -config /etc/vpsGuard/config.yaml
 Restart=always
 RestartSec=5
-User=vps-guard
+User=vpsGuard
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_SYSLOG
 AmbientCapabilities=CAP_NET_ADMIN CAP_SYSLOG
 NoNewPrivileges=yes
 ProtectSystem=strict
+ReadWritePaths=/var/log/vpsGuard /var/cache/vpsGuard
 ProtectHome=yes
 PrivateTmp=yes
 MemoryMax=256M
@@ -357,13 +360,13 @@ fi
 # ── Install logrotate ──────────────────────────────────────
 info "Setting up logrotate..."
 if [ "$DRY_RUN" = true ]; then
-    echo "[DRY-RUN] Install logrotate to /etc/logrotate.d/vps-guard"
+    echo "[DRY-RUN] Install logrotate to /etc/logrotate.d/vpsGuard"
 else
-    if fetch "$RAW_BASE/deploy/vps-guard.logrotate" > /dev/null 2>&1; then
-        fetch "$RAW_BASE/deploy/vps-guard.logrotate" > /etc/logrotate.d/vps-guard
+    if fetch "$RAW_BASE/deploy/vpsGuard.logrotate" > /dev/null 2>&1; then
+        fetch "$RAW_BASE/deploy/vpsGuard.logrotate" > /etc/logrotate.d/vpsGuard
     else
-        cat > /etc/logrotate.d/vps-guard << 'LOGEOF'
-/var/log/vps-guard/*.log {
+        cat > /etc/logrotate.d/vpsGuard << 'LOGEOF'
+/var/log/vpsGuard/*.log {
     daily
     rotate 7
     compress
@@ -379,14 +382,14 @@ fi
 # ── Start service ──────────────────────────────────────────
 if [ "$DRY_RUN" = false ]; then
     run systemctl daemon-reload
-    run systemctl enable vps-guard
-    run systemctl start vps-guard
+    run systemctl enable vpsGuard
+    run systemctl start vpsGuard
 
     sleep 2
-    if systemctl is-active --quiet vps-guard; then
+    if systemctl is-active --quiet vpsGuard; then
         info "Service is running"
     else
-        warn "Service may not have started. Check: journalctl -u vps-guard"
+        warn "Service may not have started. Check: journalctl -u vpsGuard"
     fi
 fi
 
@@ -395,17 +398,17 @@ if [ "$DRY_RUN" = false ]; then
     cat <<EOF
 
 ╔══════════════════════════════════════════╗
-║   VPS-Guard installed successfully!     ║
+║   vpsGuard installed successfully!     ║
 ╚══════════════════════════════════════════╝
 
   Binary:    $PREFIX/bin/$BINARY
   Config:    $CONFIG_DIR/config.yaml
   Logs:      $LOG_DIR/
-  Service:   vps-guard ($installed_from)
+  Service:   vpsGuard ($installed_from)
 
   Commands:
-    systemctl status vps-guard
-    journalctl -u vps-guard -f
+    systemctl status vpsGuard
+    journalctl -u vpsGuard -f
     nano $CONFIG_DIR/config.yaml
 
   Configure APIs:

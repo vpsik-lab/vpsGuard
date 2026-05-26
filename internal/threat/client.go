@@ -49,7 +49,7 @@ func NewIntelClient(cfg *config.Config, logger *zap.Logger) *IntelClient {
 		client.alienvault = NewAlienVaultClient(cfg.Threat.AlienVaultKey)
 	}
 
-	cachePath := cfg.CacheDir + "/vps-guard-cache.db"
+	cachePath := cfg.CacheDir + "/vpsGuard-cache.db"
 	cache, err := NewIPCache(cachePath, time.Duration(cfg.Threat.CacheTTL)*time.Hour, logger)
 	if err != nil {
 		logger.Warn("disk cache disabled, using in-memory", zap.Error(err))
@@ -148,7 +148,7 @@ func (c *IntelClient) ReportIP(ctx context.Context, ip string) {
 		return
 	}
 	<-c.rateLimit.C
-	if err := c.abuseipdb.Report(ctx, ip, []int{18, 22}, "SSH brute-force blocked by VPS-Guard"); err != nil {
+	if err := c.abuseipdb.Report(ctx, ip, []int{18, 22}, "SSH brute-force blocked by vpsGuard"); err != nil {
 		c.logger.Warn("AbuseIPDB report failed", zap.String("ip", ip), zap.Error(err))
 	}
 }

@@ -1,4 +1,4 @@
-# Contributing to VPS-Guard
+# Contributing to vpsGuard
 
 Thanks for your interest! Here's how to contribute effectively.
 
@@ -8,7 +8,7 @@ Open an issue with:
 - Go version (`go version`)
 - OS version
 - Config (sanitize API keys)
-- Logs from `/var/log/vps-guard/agent.log`
+- Logs from `/var/log/vpsGuard/agent.log`
 
 ## Pull Requests
 

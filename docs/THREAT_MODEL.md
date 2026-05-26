@@ -1,9 +1,9 @@
-# VPS-Guard Agent — Threat Model
+# vpsGuard Agent — Threat Model
 
 **Version**: 0.2.0  
 **Scope**: Agent only (Central Platform has its own threat model)
 
-> This document describes the threat model for the VPS-Guard **Agent**.  
+> This document describes the threat model for the vpsGuard **Agent**.  
 > The Central Platform (Phase B) is out of scope — see [`AGENT-API-CONTRACT.md`](AGENT-API-CONTRACT.md) for trust boundaries between them.
 
 ---
@@ -77,7 +77,7 @@
 ### 1. SSH Brute Force
 - **Detection**: Failed password attempts in auth.log/journald
 - **Response**: Behavioral scoring → nftables block with timeout
-- **Mitigation**: Fail2ban (first line) + VPS-Guard (intelligent blocking)
+- **Mitigation**: Fail2ban (first line) + vpsGuard (intelligent blocking)
 
 ### 2. Agent Stopped by Attacker
 - **Detection**: systemd auto-restart (RestartSec=5)
@@ -127,10 +127,10 @@
 ```
 Layer 1: UFW (default deny incoming)
 Layer 2: Fail2ban (SSH rate limiting)
-Layer 3: nftables dynamic sets (VPS-Guard intelligent blocking)
+Layer 3: nftables dynamic sets (vpsGuard intelligent blocking)
 Layer 4: Kernel hardening (sysctl)
 Layer 5: SSH hardening (no root, no password)
-Layer 6: VPS-Guard hybrid scoring (local + central, 85/15 split)
+Layer 6: vpsGuard hybrid scoring (local + central, 85/15 split)
 Layer 7: Systemd sandboxing (NoNewPrivileges, ProtectSystem)
 ```
 

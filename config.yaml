@@ -1,5 +1,5 @@
-log_dir: /var/log/vps-guard
-cache_dir: /var/cache/vps-guard
+log_dir: /var/log/vpsGuard
+cache_dir: /var/cache/vpsGuard
 mode: agent
 agent_mode: hybrid
 
@@ -39,7 +39,7 @@ scoring:
   temporal_ttl_hours: 168
 
 firewall:
-  table: vps_guard
+  table: vpsGuard
   set_name: blacklist
   default_block_hours: 24
 

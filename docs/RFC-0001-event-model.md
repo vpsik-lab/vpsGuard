@@ -1,4 +1,4 @@
-# RFC-0001: VPS-Guard Event Schema
+# RFC-0001: vpsGuard Event Schema
 
 **Status**: Active  
 **Version**: 0.2.0  
@@ -8,7 +8,7 @@
 
 ## Scope
 
-This RFC defines the event model used internally by the VPS-Guard **Agent**.  
+This RFC defines the event model used internally by the vpsGuard **Agent**.  
 Events flow through the Event Bus from sources (monitor) to processors (scorer, decision).
 
 The Central Platform API contract is defined separately in [`AGENT-API-CONTRACT.md`](AGENT-API-CONTRACT.md).

@@ -131,7 +131,7 @@ func kernelHardening() error {
 		"net.ipv4.icmp_ignore_bogus_error_responses": "1",
 	}
 
-	path := "/etc/sysctl.d/99-vps-guard.conf"
+	path := "/etc/sysctl.d/99-vpsGuard.conf"
 	var lines []string
 	for k, v := range params {
 		lines = append(lines, fmt.Sprintf("%s=%s", k, v))

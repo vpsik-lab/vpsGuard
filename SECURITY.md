@@ -2,10 +2,10 @@
 
 ## Reporting a Vulnerability
 
-VPS-Guard is a security tool. If you discover a vulnerability:
+vpsGuard is a security tool. If you discover a vulnerability:
 
 1. **Do NOT** open a public GitHub issue
-2. Email details to security@vps-guard.dev (or open a GitHub Security Advisory)
+2. Email details to security@vpsGuard.dev (or open a GitHub Security Advisory)
 3. Include: Go version, OS version, steps to reproduce, impact assessment
 
 We aim to respond within 48 hours and patch critical issues within 7 days.

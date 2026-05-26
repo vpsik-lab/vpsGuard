@@ -24,13 +24,13 @@ jobs:
         run: go test -v -count=1 -race ./...
 
       - name: Build
-        run: go build -ldflags="-s -w" -o vps-guard ./cmd/vps-guard/
+        run: go build -ldflags="-s -w" -o vpsGuard ./cmd/vpsGuard/
 
       - name: Version check
-        run: ./vps-guard -version
+        run: ./vpsGuard -version
 
       - name: Binary size
-        run: ls -lh vps-guard
+        run: ls -lh vpsGuard
 
   cross-build:
     runs-on: ubuntu-latest

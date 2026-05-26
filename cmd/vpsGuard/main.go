@@ -36,14 +36,14 @@ var (
 )
 
 func main() {
-	configPath := flag.String("config", "/etc/vps-guard/config.yaml", "path to config file")
+	configPath := flag.String("config", "/etc/vpsGuard/config.yaml", "path to config file")
 	showVersion := flag.Bool("version", false, "show version and exit")
 	genChecksum := flag.Bool("gen-checksum", false, "compute and print SHA256 of config file")
 	healthAddr := flag.String("health-addr", "127.0.0.1:9090", "health endpoint listen address")
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("vps-guard version %s (commit: %s, built: %s)\n", version, commit, date)
+		fmt.Printf("vpsGuard version %s (commit: %s, built: %s)\n", version, commit, date)
 		os.Exit(0)
 	}
 
@@ -79,7 +79,7 @@ func main() {
 	}
 	defer logger.Sync()
 
-	logger.Info("starting vps-guard agent",
+	logger.Info("starting vpsGuard agent",
 		zap.String("version", version),
 		zap.String("commit", commit),
 		zap.String("config_path", *configPath),
@@ -274,7 +274,7 @@ func newLogger(logDir string) (*zap.Logger, error) {
 	cfg.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	cfg.OutputPaths = []string{"stdout"}
 	if logDir != "" {
-		cfg.OutputPaths = append(cfg.OutputPaths, filepath.Join(logDir, "vps-guard.log"))
+		cfg.OutputPaths = append(cfg.OutputPaths, filepath.Join(logDir, "vpsGuard.log"))
 	}
 	return cfg.Build()
 }

@@ -1,18 +1,19 @@
 [Unit]
-Description=VPS-Guard Security Agent
+Description=vpsGuard Security Agent
 Documentation=https://github.com/vpsik-lab/vpsGuard
 After=network.target nftables.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/vps-guard -config /etc/vps-guard/config.yaml
+ExecStart=/usr/local/bin/vpsGuard -config /etc/vpsGuard/config.yaml
 Restart=always
 RestartSec=5
-User=vps-guard
+User=vpsGuard
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_SYSLOG
 AmbientCapabilities=CAP_NET_ADMIN CAP_SYSLOG
 NoNewPrivileges=yes
 ProtectSystem=strict
+ReadWritePaths=/var/log/vpsGuard /var/cache/vpsGuard
 ProtectHome=yes
 PrivateTmp=yes
 MemoryMax=256M

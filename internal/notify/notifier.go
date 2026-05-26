@@ -62,7 +62,7 @@ func (n *Notifier) Send(ctx context.Context, evt pipeline.Envelope, scores *engi
 	}
 
 	if n.email != nil {
-		if err := n.email.Send(ctx, "VPS-Guard Alert - "+scores.IP, msg); err != nil {
+		if err := n.email.Send(ctx, "vpsGuard Alert - "+scores.IP, msg); err != nil {
 			n.logger.Error("email send failed", zap.Error(err))
 		}
 	}
@@ -109,7 +109,7 @@ func formatAlert(evt pipeline.Envelope, scores *engine.ScoreResult, action engin
 		emoji = "❓"
 	}
 
-	return fmt.Sprintf(`%s <b>VPS-Guard Alert</b>
+	return fmt.Sprintf(`%s <b>vpsGuard Alert</b>
 
 <b>IP:</b> %s
 <b>Score:</b> %d/100 (%s)

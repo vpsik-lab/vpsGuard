@@ -109,10 +109,10 @@ func Load(path string) (*Config, error) {
 
 func (c *Config) SetDefaults() {
 	if c.LogDir == "" {
-		c.LogDir = "/var/log/vps-guard"
+		c.LogDir = "/var/log/vpsGuard"
 	}
 	if c.CacheDir == "" {
-		c.CacheDir = "/var/cache/vps-guard"
+		c.CacheDir = "/var/cache/vpsGuard"
 	}
 	if c.AgentMode == "" {
 		c.AgentMode = "hybrid"
@@ -178,7 +178,7 @@ func (c *Config) SetDefaults() {
 		c.Scoring.CentralQuarThreshold = 50
 	}
 	if c.Firewall.Table == "" {
-		c.Firewall.Table = "vps_guard"
+		c.Firewall.Table = "vpsGuard"
 	}
 	if c.Firewall.SetName == "" {
 		c.Firewall.SetName = "blacklist"

@@ -9,8 +9,8 @@ func TestSetDefaults(t *testing.T) {
 	cfg := &Config{}
 	cfg.SetDefaults()
 
-	if cfg.LogDir != "/var/log/vps-guard" {
-		t.Errorf("LogDir = %q, want %q", cfg.LogDir, "/var/log/vps-guard")
+	if cfg.LogDir != "/var/log/vpsGuard" {
+		t.Errorf("LogDir = %q, want %q", cfg.LogDir, "/var/log/vpsGuard")
 	}
 	if cfg.AgentMode != "hybrid" {
 		t.Errorf("AgentMode = %q, want %q", cfg.AgentMode, "hybrid")
@@ -43,7 +43,7 @@ func TestValidate(t *testing.T) {
 					BehaviorWeight: 0.30, TemporalWeight: 0.10, CentralWeight: 0.15,
 					CentralBlockThreshold: 80, CentralQuarThreshold: 50,
 				},
-				Firewall: FirewallConfig{Table: "vps_guard", SetName: "blacklist", DefaultBlockDuration: 24},
+				Firewall: FirewallConfig{Table: "vpsGuard", SetName: "blacklist", DefaultBlockDuration: 24},
 				CentralFeed: CentralFeedConfig{MinConfidence: 50},
 			},
 			wantErr: false,
@@ -112,7 +112,7 @@ scoring:
 firewall:
   default_block_hours: 12
 `)
-	tmpFile, err := os.CreateTemp("", "vps-guard-test-*.yaml")
+	tmpFile, err := os.CreateTemp("", "vpsGuard-test-*.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}

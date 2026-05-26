@@ -31,7 +31,7 @@ jobs:
         id: notes
         run: |
           echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "## VPS-Guard Agent ${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "## vpsGuard Agent ${{ github.ref_name }}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "### Installation" >> $GITHUB_OUTPUT
           echo '```bash' >> $GITHUB_OUTPUT

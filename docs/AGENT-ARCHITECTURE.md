@@ -1,4 +1,4 @@
-# VPS-Guard Agent — Architecture
+# vpsGuard Agent — Architecture
 
 **Version**: 0.2.0  
 **Status**: Stable
@@ -65,7 +65,7 @@
 
 ## 2. Component Architecture
 
-### 2.1 Entry Point (`cmd/vps-guard/main.go`)
+### 2.1 Entry Point (`cmd/vpsGuard/main.go`)
 
 Wires all components together:
 1. Loads and validates config
@@ -128,7 +128,7 @@ Scoring formula: see [`AGENT-SCORING.md`](AGENT-SCORING.md).
   - `aggressive_ssh`: block on >10 attempts/5min
   - `port_scan`: block on >20 unique ports/5min
   - `invalid_user`: block on non-existent usernames
-- Custom rules loaded from `/etc/vps-guard/rules.yaml` (replaces defaults)
+- Custom rules loaded from `/etc/vpsGuard/rules.yaml` (replaces defaults)
 
 ### 2.8 Firewall (`internal/firewall/`)
 
@@ -136,7 +136,7 @@ Scoring formula: see [`AGENT-SCORING.md`](AGENT-SCORING.md).
 |--------|--------|
 | Backend | nftables (via `exec.Command`) |
 | Set type | Dynamic with timeout (auto-expire) |
-| Table | `inet vps_guard` |
+| Table | `inet vpsGuard` |
 | Set | `blacklist` (IPv4) |
 | Default block | 24h (configurable) |
 
@@ -202,7 +202,7 @@ End-to-end latency target: < 100ms from log line to block.
 ## 4. Package Dependency Graph
 
 ```
-cmd/vps-guard/main.go
+cmd/vpsGuard/main.go
   ├── internal/config
   ├── internal/pipeline (bus + event types)
   ├── internal/monitor (parser, journal, behavioral)

@@ -1,10 +1,10 @@
-# VPS-Guard Agent — Central Platform API Contract
+# vpsGuard Agent — Central Platform API Contract
 
 **Version**: 0.2.0  
 **Status**: Draft  
 **Last Updated**: 2026-05-24
 
-> This document defines the HTTP API contract between the VPS-Guard **Agent** and the **Central Platform**.  
+> This document defines the HTTP API contract between the vpsGuard **Agent** and the **Central Platform**.  
 > The Agent is the consumer; the Platform is the provider.  
 > Both sides can be developed independently as long as this contract is honoured.
 
