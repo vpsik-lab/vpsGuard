@@ -1,6 +1,6 @@
 # vpsGuard Agent — Deployment Guide
 
-**Version**: 0.2.0  
+**Version**: 0.3.0  
 **OS**: Ubuntu 20.04+ / Debian 11+
 
 ---

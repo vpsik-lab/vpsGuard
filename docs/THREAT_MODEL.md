@@ -1,6 +1,6 @@
 # vpsGuard Agent — Threat Model
 
-**Version**: 0.2.0  
+**Version**: 0.3.0  
 **Scope**: Agent only (Central Platform has its own threat model)
 
 > This document describes the threat model for the vpsGuard **Agent**.  

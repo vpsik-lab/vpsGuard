@@ -1,6 +1,6 @@
 # vpsGuard Agent — Architecture
 
-**Version**: 0.2.0  
+**Version**: 0.3.0  
 **Status**: Stable  
 **Phase**: A — Agent (standalone, open-source)
 

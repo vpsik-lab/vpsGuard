@@ -1,6 +1,6 @@
 # vpsGuard Agent — Central Platform API Contract
 
-**Version**: 0.2.0  
+**Version**: 0.3.0  
 **Status**: Draft — Phase B (separate project, in development)  
 **Last Updated**: 2026-05-26
 
@@ -150,7 +150,7 @@ Authorization: Bearer <platform_api_token>
 ```json
 {
   "agent_id": "vps-nyc1-01",
-  "agent_version": "0.2.0",
+  "agent_version": "0.3.0",
   "events": [
     {
       "ip": "185.220.101.X",

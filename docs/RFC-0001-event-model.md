@@ -1,7 +1,7 @@
 # RFC-0001: vpsGuard Event Schema
 
 **Status**: Active  
-**Version**: 0.2.0  
+**Version**: 0.3.0  
 **Last Updated**: 2026-05-24
 
 ---
@@ -247,4 +247,4 @@ CREATE INDEX idx_ip_cache_expires ON ip_cache(expires_at);
 | Version | Date | Changes |
 |---------|------|---------|
 | 0.1.0 | 2026-05-01 | Initial event schema |
-| 0.2.0 | 2026-05-24 | Added `CentralConf` to ScoreResult; cleanup goroutine documentation |
+| 0.3.0 | 2026-05-26 | CLI commands, Prometheus /metrics, env-var secrets, watchdog tamper callback, IPv6 dual-stack, cache restore, arg-injection fix, course Sprint 1-4 |
